@@ -2,21 +2,17 @@
   <v-footer dark padless>
     <v-card flat tile class="pink white--text text-center">
       <v-card-text>
-        <v-btn 
-        v-for="icon in icons" 
-        :key="icon" 
-        class="mx-4 white--text" 
-        icon
-        >
+        <v-btn v-for="icon in icons" :key="icon" class="mx-4 white--text" icon>
           <v-icon size="24px">
             {{ icon }}
           </v-icon>
         </v-btn>
       </v-card-text>
-      <v-card-text class="white--text pt-0">
+
+      <v-card-text class="white--text pt-0 text-center">
         <p>
           <strong>Ej Movie</strong> is a movie database web application created
-          with the Vue.js framework.
+          with the Vue.js framework. It is a work in progress.
         </p>
         <p>
           This project is open source and you can view the source code
@@ -27,7 +23,7 @@
       <v-divider></v-divider>
 
       <v-card-text class="white--text">
-        {{ new Date().getFullYear() }} &copy; 🖤Ejay02
+        {{ new Date().getFullYear() }} &copy; <strong>🖤Ejay02</strong>
       </v-card-text>
     </v-card>
   </v-footer>
@@ -36,13 +32,7 @@
 <script>
 export default {
   data: () => ({
-    icons: [
-      "mdi-facebook",
-      "mdi-twitter",
-      "mdi-linkedin",
-      "mdi-instagram",
-      // 'mdi-youtube',
-    ],
+    icons: ["mdi-facebook", "mdi-twitter", "mdi-linkedin", "mdi-instagram"],
   }),
 };
 </script>

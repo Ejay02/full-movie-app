@@ -1,11 +1,15 @@
-/* eslint-disable */
 <template>
-  <div></div>
+  <div>
+    <popular-movies />
+    <upcoming-movies />
+  </div>
 </template>
 
 <script>
+import PopularMovies from "@/components/PopularMovies.vue";
+import UpcomingMovies from "@/components/UpcomingMovies.vue";
 export default {
-  // eslint-disable-next-line vue/multi-word-component-names
-  name: "Home",
+  name: "HomeView",
+  components: { PopularMovies, UpcomingMovies },
 };
 </script>
