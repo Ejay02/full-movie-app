@@ -1,5 +1,3 @@
-# movie-app
-
 # Latest Movie App
 
 Welcome to the Latest Movie App! This app showcases the latest movies and their trailers. Dive into the world of cinema and stay updated with the newest releases.
@@ -30,7 +28,7 @@ Check out the live demo of the app [here](https://latest-movie-app-ej.netlify.ap
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/yourusername/latest-movie-app.git
+    git clone https://github.com/Ejay02/full-movie-app.git
     ```
 
 2. Navigate to the project directory:
@@ -43,13 +41,7 @@ Check out the live demo of the app [here](https://latest-movie-app-ej.netlify.ap
     npm install
     ```
 
-4. Set up your environment variables. Create a `.env` file in the root directory and add the following:
-    ```sh
-    API_KEY=your_api_key_here
-    DATABASE_URL=your_database_url_here
-    ```
-
-5. Start the development server:
+3. Start the development server:
     ```sh
     npm run serve
     ```
