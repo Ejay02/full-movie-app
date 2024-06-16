@@ -4,7 +4,7 @@ Welcome to the Latest Movie App! This app showcases the latest movies and their 
 
 ## Demo
 
-Check out the live demo of the app [here](https://latest-movie-app-ej.netlify.app/actors).
+Check out the live demo of the app [here](https://latest-movie-app-ej.netlify.app/).
 
 ## Features
 
