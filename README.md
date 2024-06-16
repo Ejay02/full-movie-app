@@ -16,16 +16,6 @@ Check out the live demo of the app [here](https://latest-movie-app-ej.netlify.ap
 - **Search Functionality:** Search for your favorite movies and actors.
 - **Responsive Design:** Enjoy a seamless experience on any device.
 
-## Screenshots
-
-### Home Page
-![Home Page](./screenshots/home.png)
-
-### Movie Details
-![Movie Details](./screenshots/movie-details.png)
-
-### Actor Details
-![Actor Details](./screenshots/actor-details.png)
 
 ## Technologies Used
 
@@ -34,11 +24,7 @@ Check out the live demo of the app [here](https://latest-movie-app-ej.netlify.ap
   - CSS
   - JavaScript
   - Vue.js
-- **Backend:**
-  - Node.js
-  - Express.js
-- **Database:**
-  - MongoDB
+
 
 ## Installation
 
