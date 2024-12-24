@@ -1,6 +1,6 @@
 <template>
   <div class="mx-3">
-    <h2 class="mb-4 mt-4 grey--text text-center">Popular Movies</h2>
+    <h2 class="mb-4 mt-4 grey--text text-center">Popular Shows</h2>
 
     <v-container fluid>
       <v-row>
@@ -9,10 +9,10 @@
           sm="12"
           md="6"
           lg="3"
-          v-for="movie in movies"
-          :key="movie.id"
+          v-for="show in shows"
+          :key="show.id"
         >
-          <MovieCard :movie="movie" :genres="genres" />
+          <TvCard :show="show" :genres="genres" />
         </v-col>
       </v-row>
     </v-container>
@@ -20,22 +20,23 @@
 </template>
 
 <script>
-import MovieCard from "../components/MovieCard";
+import TvCard from "../components/TvCard";
+
 export default {
   components: {
-    MovieCard,
+    TvCard,
   },
   data: function () {
     return {
-      movies: [],
+      shows: [],
       genres: [],
     };
   },
   async mounted() {
     this.fetchGenres();
     try {
-      const response = await this.$http.get("/movie/popular");
-      this.movies = response.data.results;
+      const response = await this.$http.get("/tv/popular");
+      this.shows = response.data.results;
     } catch (error) {
       console.log(error);
     }
@@ -43,7 +44,7 @@ export default {
   methods: {
     async fetchGenres() {
       try {
-        const response = await this.$http.get("/genre/movie/list");
+        const response = await this.$http.get("/genre/tv/list");
         this.genres = response.data.genres;
       } catch (error) {
         console.log(error);
@@ -52,5 +53,3 @@ export default {
   },
 };
 </script>
-
-<style></style>

@@ -3,6 +3,7 @@ import VueRouter from "vue-router";
 import HomeView from "../views/HomeView.vue";
 import MovieDetail from "../components/MovieDetail.vue";
 import Actors from "../components/Actors.vue";
+import TvShows from "../components/TvShows.vue";
 import ActorDetail from "../components/ActorDetail.vue";
 
 Vue.use(VueRouter);
@@ -17,14 +18,16 @@ const routes = [
     path: "/movie/:id",
     name: "Home",
     component: MovieDetail,
-  },{
+  },
+  {
     path: "/actors",
     name: "actors",
     component: Actors,
-  },{
+  },
+  {
     path: "/actor/:id",
-    name:"actor",
-    component: ActorDetail
+    name: "actor",
+    component: ActorDetail,
   },
   {
     path: "/about",
@@ -34,6 +37,11 @@ const routes = [
     // which is lazy-loaded when the route is visited.
     component: () =>
       import(/* webpackChunkName: "about" */ "../views/AboutView.vue"),
+  },
+  {
+    path: "/shows",
+    name: "tvShows",
+    component: TvShows,
   },
 ];
 

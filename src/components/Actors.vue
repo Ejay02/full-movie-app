@@ -1,9 +1,16 @@
 <template>
   <div class="mx-3">
-    <h2 class="mt-2 grey--text">Popular Actors</h2>
+    <h2 class="mt-2 grey--text text-center">Popular Actors</h2>
     <v-container fluid>
       <v-row>
-        <v-col cols="12" sm="3" :key="actor.id" v-for="actor in this.actors">
+        <v-col
+          cols="12"
+          sm="12"
+          md="6"
+          lg="3"
+          :key="actor.id"
+          v-for="actor in this.actors"
+        >
           <ActorCard :actor="actor" />
         </v-col>
         <v-col cols="12" class="d-flex justify-center mt-5">

@@ -1,8 +1,6 @@
 <template>
   <div id="example">
-    <h2 class="mx-3 grey--text">
-      Upcoming Movies
-    </h2>
+    <h2 class="mx-3 grey--text text-center mt-4 mb-6">Upcoming Movies</h2>
     <carousel-3d
       :controls-visible="true"
       :clickable="false"
@@ -14,7 +12,9 @@
         <figure>
           <img :src="'https://image.tmdb.org/t/p/w500/' + movie.poster_path" />
           <figcaption>
-            <v-btn :to="`/movie/${movie.id}`" text color="white"> {{ movie.title }}</v-btn>
+            <v-btn :to="`/movie/${movie.id}`" text color="white">
+              {{ movie.title }}</v-btn
+            >
           </figcaption>
         </figure>
       </slide>
@@ -43,7 +43,6 @@ export default {
         "https://api.themoviedb.org/3/movie/upcoming"
       );
       this.upcomingMovies = response.data.results.slice(1, 6);
-      console.log(this.upcomingMovies);
     },
   },
 };

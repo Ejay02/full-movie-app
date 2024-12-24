@@ -1,11 +1,11 @@
 <template>
   <v-hover v-slot="{ hover }" open-delay="200" class="cursor-pointer">
     <v-card :elevation="hover ? 16 : 2" :class="{ 'on-hover': hover }">
-      <router-link :to="`/movie/${movie.id}`">
+      <router-link :to="`/show/${show.id}`">
         <v-img :src="posterPath" alt="" class=""></v-img>
       </router-link>
       <v-card-title class="subtitle-2">
-        {{ movie.title }}
+        {{ show.name }}
         <v-btn icon class="ml-auto" @click.stop="toggleWatchlist">
           <v-icon :color="isInWatchlist ? 'amber' : ''">
             {{ isInWatchlist ? "mdi-bookmark" : "mdi-bookmark-outline" }}
@@ -15,7 +15,7 @@
       <v-card-text>
         <v-row align="center" class="mx-0">
           <v-rating
-            :value="movie.vote_average / 2"
+            :value="show.vote_average / 2"
             color="amber"
             dense
             half-increments
@@ -25,14 +25,13 @@
           </v-rating>
 
           <div class="grey--text ml-auto">
-            {{ Math.round(movie.vote_average * 10) }}% |
-            {{ movie.release_date }}
+            {{ Math.round(show.vote_average * 10) }}% |
+            {{ show.first_air_date }}
           </div>
         </v-row>
-        <!-- genre -->
         <div class="my-6 subtitle-2">
           <span
-            v-for="(genre, index) in movie.genre_ids"
+            v-for="(genre, index) in show.genre_ids"
             :key="genre"
             class="ml-1"
           >
@@ -47,7 +46,7 @@
 <script>
 export default {
   props: {
-    movie: {
+    show: {
       required: true,
     },
     genres: {
@@ -61,14 +60,14 @@ export default {
   },
   computed: {
     posterPath() {
-      return "https://image.tmdb.org/t/p/w500/" + this.movie.poster_path;
+      return "https://image.tmdb.org/t/p/w500/" + this.show.poster_path;
     },
   },
   methods: {
     genreTypeName(genraId, index) {
       for (const item of this.genres) {
         if (item.id == genraId) {
-          if (this.movie.genre_ids.length - 1 == index) {
+          if (this.show.genre_ids.length - 1 == index) {
             return item.name;
           } else {
             return item.name + ",";
@@ -79,12 +78,10 @@ export default {
     toggleWatchlist() {
       this.isInWatchlist = !this.isInWatchlist;
       this.$emit("watchlist-toggle", {
-        movieId: this.movie.id,
+        showId: this.show.id,
         action: this.isInWatchlist ? "add" : "remove",
       });
     },
   },
 };
 </script>
-
-<style></style>

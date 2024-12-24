@@ -1,9 +1,16 @@
 <template>
   <div>
-    <h2 class="mt-2 grey--text">Cast</h2>
+    <h2 class="mt-2 grey--text text-center">Cast</h2>
     <v-container>
       <v-row>
-        <v-col cols="12" sm="3" :key="inedx" v-for="(cast, inedx) in casts">
+        <v-col
+          cols="12"
+          sm="12"
+          md="6"
+          lg="3"
+          :key="index"
+          v-for="(cast, index) in casts"
+        >
           <v-hover v-slot="{ hover }" open-delay="200">
             <v-card :elevation="hover ? 16 : 2" :class="{ 'on-hover': hover }">
               <v-img :src="castProfileImage(cast)" />
