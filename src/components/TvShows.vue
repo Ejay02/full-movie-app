@@ -9,6 +9,7 @@
           sm="12"
           md="6"
           lg="3"
+           xl="3"
           v-for="show in shows"
           :key="show.id"
         >

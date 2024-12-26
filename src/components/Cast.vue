@@ -8,6 +8,7 @@
           sm="12"
           md="6"
           lg="3"
+          xl="3"
           :key="index"
           v-for="(cast, index) in casts"
         >

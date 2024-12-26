@@ -2,13 +2,14 @@
   <div class="mx-3">
     <h2 class="mb-4 mt-4 grey--text text-center">Popular Movies</h2>
 
-    <v-container fluid>
+    <v-container fluid x-small>
       <v-row>
         <v-col
           cols="12"
           sm="12"
           md="6"
           lg="3"
+          xl="3"
           v-for="movie in movies"
           :key="movie.id"
         >
