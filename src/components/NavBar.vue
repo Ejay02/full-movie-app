@@ -2,7 +2,7 @@
   <nav>
     <v-app-bar app color="pink" dark>
       <v-icon class="mr-2">fas fa-video</v-icon>
-      <v-toolbar-title>Ej Movie</v-toolbar-title>
+      <v-toolbar-title>Ej's Movie</v-toolbar-title>
 
       <!-- <v-btn text class="ml-2">Contact</v-btn> -->
       <v-spacer></v-spacer>

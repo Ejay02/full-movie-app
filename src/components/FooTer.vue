@@ -3,7 +3,7 @@
     <v-card flat tile class="flex pink white--text text-center">
       <v-card-text class="white--text text-center">
         <p>
-          <strong>Ej Movie</strong> is a movie database web application created
+          <strong>Ej's Movie</strong> is a movie database web application created
           with the Vue.js framework. It is a work in progress.
         </p>
         <p>
