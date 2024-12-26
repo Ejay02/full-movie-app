@@ -1,8 +1,11 @@
 <template>
   <nav>
     <v-app-bar app color="pink" dark>
-      <v-icon class="mr-2">fas fa-video</v-icon>
-      <v-toolbar-title>Ej's Movie</v-toolbar-title>
+      <v-btn text class="ml-2" to="/" >
+        <v-icon class="mr-2">fas fa-video</v-icon>
+
+        Ej's Movie</v-btn
+      >
 
       <!-- <v-btn text class="ml-2">Contact</v-btn> -->
       <v-spacer></v-spacer>
@@ -25,7 +28,7 @@
           <v-btn text :to="`/movie/${item.id}`">{{ item.title }}</v-btn>
         </template>
       </v-autocomplete> -->
-      <v-btn text class="ml-2" to="/">Movies</v-btn>
+      <v-btn text class="ml-2" to="/movies">Movies</v-btn>
       <v-btn text class="ml-2" to="/shows">TV Shows</v-btn>
       <v-btn text class="ml-2" to="/actors">Actors</v-btn>
       <v-badge

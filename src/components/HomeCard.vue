@@ -1,7 +1,7 @@
 <template>
   <v-hover v-slot="{ hover }" open-delay="200" class="cursor-pointer">
     <v-card :elevation="hover ? 16 : 2" :class="{ 'on-hover': hover }">
-      <router-link :to="`/movie/${movie.id}`">
+      <router-link :to="dynamicPath">
         <v-img
           :src="posterPath"
           alt=""
@@ -9,8 +9,9 @@
           class="poster-image"
         ></v-img>
       </router-link>
+
       <v-card-title class="subtitle-2 card-title pa-4">
-        <div class="title-text">{{ movie.title }}</div>
+        <div class="title-text">{{ movie.title || movie.name }}</div>
         <v-btn icon class="bookmark-btn" @click.stop="toggleWatchlist">
           <v-icon :color="isInWatchlist ? 'amber' : ''">
             {{ isInWatchlist ? "mdi-bookmark" : "mdi-bookmark-outline" }}
@@ -55,6 +56,9 @@ export default {
     movie: {
       required: true,
     },
+    show: {
+      required: true,
+    },
     genres: {
       required: true,
     },
@@ -67,6 +71,14 @@ export default {
   computed: {
     posterPath() {
       return "https://image.tmdb.org/t/p/w500/" + this.movie.poster_path;
+    },
+
+    dynamicPath() {
+      const title = (this.movie.title || this.movie.name)
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
+      return `/${title}/${this.movie.id}`;
     },
   },
   methods: {

@@ -49,7 +49,7 @@ export default {
   async mounted() {
     this.fetchGenres();
     try {
-      const response = await this.$http.get("/tv/popular");
+      const response = await this.$http.get("/trending/tv/day?language=en-US");
       this.shows = response.data.results;
     } catch (error) {
       console.log(error);

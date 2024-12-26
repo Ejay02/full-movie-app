@@ -1,11 +1,13 @@
 import Vue from "vue";
 import VueRouter from "vue-router";
 import HomeView from "../views/HomeView.vue";
-import MovieDetail from "../components/MovieDetail.vue";
 import Actors from "../components/Actors.vue";
 import TvShows from "../components/TvShows.vue";
+import MovieDetail from "../components/MovieDetail.vue";
 import ActorDetail from "../components/ActorDetail.vue";
 import TvShowDetail from "../components/TvShowDetail.vue";
+import PopularMovies from "@/components/PopularMovies.vue";
+import HomeDetail from "../components/HomeDetail.vue";
 
 Vue.use(VueRouter);
 
@@ -16,8 +18,18 @@ const routes = [
     component: HomeView,
   },
   {
+    path: "/:name/:id",
+    name: "trending",
+    component: HomeDetail,
+  },
+  {
+    path: "/movies",
+    name: "movies",
+    component: PopularMovies,
+  },
+  {
     path: "/movie/:id",
-    name: "Home",
+    name: "movie",
     component: MovieDetail,
   },
   {

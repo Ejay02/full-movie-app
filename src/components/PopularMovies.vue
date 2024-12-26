@@ -58,7 +58,7 @@ export default {
   methods: {
     async fetchMovies() {
       try {
-        const response = await this.$http.get("/movie/popular");
+        const response = await this.$http.get("/trending/movie/day?language=en-US");
         this.movies = response.data.results;
       } catch (error) {
         console.log(error);
