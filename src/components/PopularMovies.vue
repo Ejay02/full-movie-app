@@ -1,5 +1,17 @@
 <template>
-  <div class="mx-3">
+  <div
+    v-if="loading"
+    class="d-flex justify-center align-center loading-container"
+  >
+    <v-progress-circular
+      :size="70"
+      :width="7"
+      color="primary"
+      indeterminate
+    ></v-progress-circular>
+  </div>
+
+  <div class="mx-3" v-else>
     <h2 class="mb-4 mt-4 grey--text text-center">Popular Movies</h2>
 
     <v-container fluid x-small>
@@ -22,6 +34,7 @@
 
 <script>
 import MovieCard from "../components/MovieCard";
+
 export default {
   components: {
     MovieCard,
@@ -30,18 +43,27 @@ export default {
     return {
       movies: [],
       genres: [],
+      loading: true,
     };
   },
   async mounted() {
-    this.fetchGenres();
     try {
-      const response = await this.$http.get("/movie/popular");
-      this.movies = response.data.results;
+      await Promise.all([this.fetchGenres(), this.fetchMovies()]);
     } catch (error) {
       console.log(error);
+    } finally {
+      this.loading = false;
     }
   },
   methods: {
+    async fetchMovies() {
+      try {
+        const response = await this.$http.get("/movie/popular");
+        this.movies = response.data.results;
+      } catch (error) {
+        console.log(error);
+      }
+    },
     async fetchGenres() {
       try {
         const response = await this.$http.get("/genre/movie/list");
@@ -54,4 +76,8 @@ export default {
 };
 </script>
 
-<style></style>
+<style>
+.loading-container {
+  min-height: 400px;
+}
+</style>

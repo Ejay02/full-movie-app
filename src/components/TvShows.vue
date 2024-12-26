@@ -1,5 +1,17 @@
 <template>
-  <div class="mx-3">
+  <div
+    v-if="loading"
+    class="d-flex justify-center align-center loading-container"
+  >
+    <v-progress-circular
+      :size="70"
+      :width="7"
+      color="primary"
+      indeterminate
+    ></v-progress-circular>
+  </div>
+
+  <div class="mx-3" v-else>
     <h2 class="mb-4 mt-4 grey--text text-center">Popular Shows</h2>
 
     <v-container fluid>
@@ -9,7 +21,7 @@
           sm="12"
           md="6"
           lg="3"
-           xl="3"
+          xl="3"
           v-for="show in shows"
           :key="show.id"
         >
@@ -31,6 +43,7 @@ export default {
     return {
       shows: [],
       genres: [],
+      loading: true,
     };
   },
   async mounted() {
@@ -40,6 +53,8 @@ export default {
       this.shows = response.data.results;
     } catch (error) {
       console.log(error);
+    } finally {
+      this.loading = false;
     }
   },
   methods: {
@@ -54,3 +69,8 @@ export default {
   },
 };
 </script>
+<style>
+.loading-container {
+  min-height: 400px;
+}
+</style>

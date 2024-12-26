@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h2 class="mt-2 grey--text text-center">Cast</h2>
+    <h2 class="mt-4 mb-4 grey--text text-center">Cast</h2>
     <v-container>
       <v-row>
         <v-col

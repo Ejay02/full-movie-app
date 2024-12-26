@@ -1,5 +1,17 @@
 <template>
-  <div class="mx-3">
+  <div
+    v-if="loading"
+    class="d-flex justify-center align-center loading-container"
+  >
+    <v-progress-circular
+      :size="70"
+      :width="7"
+      color="primary"
+      indeterminate
+    ></v-progress-circular>
+  </div>
+
+  <div class="mx-3" v-else>
     <h2 class="mt-2 grey--text text-center">Popular Actors</h2>
     <v-container fluid>
       <v-row>
@@ -50,6 +62,7 @@ export default {
   data() {
     return {
       actors: [],
+      loading: true,
     };
   },
   components: {
@@ -69,6 +82,8 @@ export default {
         // this.actors.push(...response.data.results);
       } catch (error) {
         console.log(error);
+      } finally {
+        this.loading = false;
       }
     },
     scroll() {
@@ -94,4 +109,8 @@ export default {
 };
 </script>
 
-<style></style>
+<style>
+.loading-container {
+  min-height: 400px;
+}
+</style>

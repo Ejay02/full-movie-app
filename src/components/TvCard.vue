@@ -2,18 +2,23 @@
   <v-hover v-slot="{ hover }" open-delay="200" class="cursor-pointer">
     <v-card :elevation="hover ? 16 : 2" :class="{ 'on-hover': hover }">
       <router-link :to="`/show/${show.id}`">
-        <v-img :src="posterPath" alt="" class=""></v-img>
+        <v-img
+          :src="posterPath"
+          alt=""
+          height="400"
+          class="poster-image"
+        ></v-img>
       </router-link>
-      <v-card-title class="subtitle-2">
-        {{ show.name }}
-        <v-btn icon class="ml-auto" @click.stop="toggleWatchlist">
+      <v-card-title class="subtitle-2 card-title pa-4">
+        <div class="title-text">{{ show.name }}</div>
+        <v-btn icon class="bookmark-btn" @click.stop="toggleWatchlist">
           <v-icon :color="isInWatchlist ? 'amber' : ''">
             {{ isInWatchlist ? "mdi-bookmark" : "mdi-bookmark-outline" }}
           </v-icon>
         </v-btn>
       </v-card-title>
-      <v-card-text>
-        <v-row align="center" class="mx-0">
+      <v-card-text class="content-area">
+        <div class="ratings-row">
           <v-rating
             :value="show.vote_average / 2"
             color="amber"
@@ -24,12 +29,12 @@
           >
           </v-rating>
 
-          <div class="grey--text ml-auto">
+          <div class="grey--text rating-text">
             {{ Math.round(show.vote_average * 10) }}% |
             {{ show.first_air_date }}
           </div>
-        </v-row>
-        <div class="my-6 subtitle-2">
+        </div>
+        <div class="genre-area subtitle-2">
           <span
             v-for="(genre, index) in show.genre_ids"
             :key="genre"
@@ -85,3 +90,65 @@ export default {
   },
 };
 </script>
+
+<style>
+.v-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.poster-image {
+  height: 400px;
+  object-fit: cover;
+}
+
+.card-title {
+  min-height: 64px;
+  display: flex !important;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px !important;
+}
+
+.title-text {
+  flex: 1;
+  font-size: 1rem;
+  line-height: 1.2;
+  max-height: 2.4em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.bookmark-btn {
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.content-area {
+  padding: 16px;
+}
+
+.ratings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.rating-text {
+  white-space: nowrap;
+  margin-left: 8px;
+}
+
+.genre-area {
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+</style>

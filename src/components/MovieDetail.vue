@@ -117,9 +117,9 @@
           </v-btn>
         </v-col>
       </v-row>
-      <v-divider class="mt-2"></v-divider>
+      <v-divider class="mt-8 "></v-divider>
       <Cast :casts="movie.credits.cast" />
-      <v-divider class="mt-2"></v-divider>
+      <!-- <v-divider class="mt-2 mb-10"></v-divider> -->
       <Images :images="movie.images.backdrops" />
     </v-container>
   </div>
