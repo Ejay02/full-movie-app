@@ -5,6 +5,7 @@ import MovieDetail from "../components/MovieDetail.vue";
 import Actors from "../components/Actors.vue";
 import TvShows from "../components/TvShows.vue";
 import ActorDetail from "../components/ActorDetail.vue";
+import TvShowDetail from "../components/TvShowDetail.vue";
 
 Vue.use(VueRouter);
 
@@ -42,6 +43,11 @@ const routes = [
     path: "/shows",
     name: "tvShows",
     component: TvShows,
+  },
+  {
+    path: "/show/:id",
+    name: "tvShow",
+    component: TvShowDetail,
   },
 ];
 

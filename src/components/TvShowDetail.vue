@@ -5,20 +5,20 @@
         <v-col cols="12" sm="4">
           <v-hover v-slot="{ hover }" open-delay="200">
             <v-card :elevation="hover ? 16 : 2" :class="{ 'on-hover': hover }">
-              <router-link :to="`/movie/${movie.id}`">
+              <router-link :to="`/tv/${show.id}`">
                 <v-img :src="posterPath" alt="" class="" />
               </router-link>
             </v-card>
           </v-hover>
         </v-col>
-        <!-- cols="6" sm="6" md="3" lg="3" -->
+
         <!--  -->
         <v-col cols="12" sm="8">
-          <h1 class="grey--text text-darken-3 mt-5">{{ this.movie.title }}</h1>
+          <h1 class="grey--text text-darken-3 mt-5">{{ this.show.name }}</h1>
           <!-- <v-row> -->
           <v-col>
             <v-rating
-              :value="movie.vote_average / 2"
+              :value="show.vote_average / 2"
               color="amber"
               dense
               half-increments
@@ -32,11 +32,11 @@
           <v-col>
             <span class="gray--text">
               <span class="mr-2">
-                {{ Math.round(movie.vote_average * 10) }}%
+                {{ Math.round(show.vote_average * 10) }}%
               </span>
               |
               <span class="ml-2">
-                {{ movie.release_date }}
+                {{ show.first_air_date }}
               </span>
             </span>
           </v-col>
@@ -45,12 +45,12 @@
           <v-col cols="12" sm="7">
             <div class="subtitle-2 grey--text">
               <span
-                v-for="(item, index) in movie.genres"
+                v-for="(item, index) in show.genres"
                 :key="index"
                 class="ml-1"
               >
                 {{ item.name }}
-                <span v-if="movie.genres.length - 1 != index">,</span>
+                <span v-if="show.genres.length - 1 != index">,</span>
               </span>
             </div>
           </v-col>
@@ -58,14 +58,14 @@
 
           <!-- desc -->
           <p class="mt-5 grey--text text--darken-3 subheader">
-            {{ this.movie.overview }}
+            {{ this.show.overview }}
           </p>
           <!-- cast -->
           <div class="mt-5">
             <h2 class="mt-5 grey--text text--darken-3">Featured Cast</h2>
             <div
               :key="index"
-              v-for="(crew, index) in movie.credits.crew"
+              v-for="(crew, index) in show.credits.crew"
               class="mt-5"
             >
               <div v-if="index < 2" class="">
@@ -88,7 +88,7 @@
             </template>
             <v-card>
               <v-card-title>
-                <span class="headline">{{ this.movie.title }}</span>
+                <span class="headline">{{ this.show.title }}</span>
               </v-card-title>
               <v-card-text>
                 <v-container>
@@ -118,9 +118,9 @@
         </v-col>
       </v-row>
       <v-divider class="mt-8"></v-divider>
-      <Cast :casts="movie.credits.cast" />
+      <Cast :casts="show.credits.cast" />
       <!-- <v-divider class="mt-2 mb-10"></v-divider> -->
-      <Images :images="movie.images.backdrops" />
+      <Images :images="show.images.backdrops" />
     </v-container>
   </div>
 </template>
@@ -135,7 +135,7 @@ export default {
   },
   data() {
     return {
-      movie: {
+      show: {
         credits: {
           crew: {},
         },
@@ -149,27 +149,27 @@ export default {
     };
   },
   mounted() {
-    this.fetchMovie(this.$route.params.id);
+    this.fetchShow(this.$route.params.id);
   },
   watch: {
     "$route.params.id": {
       handler() {
-        this.fetchMovie(this.$route.params.id);
+        this.fetchShow(this.$route.params.id);
       },
       immediate: true,
     },
   },
   computed: {
     posterPath() {
-      return "https://image.tmdb.org/t/p/w500/" + this.movie.poster_path;
+      return "https://image.tmdb.org/t/p/w500/" + this.show.poster_path;
     },
   },
   methods: {
-    async fetchMovie(movieId) {
+    async fetchShow(showId) {
       const response = await this.$http.get(
-        "/movie/" + movieId + "?append_to_response=credits,videos,images"
+        "/tv/" + showId + "?append_to_response=credits,videos,images"
       );
-      this.movie = response.data;
+      this.show = response.data;
     },
     openYouTubeModel() {
       this.mediaURL = this.youtubeVideo();
@@ -179,10 +179,8 @@ export default {
       this.isVideo = false;
     },
     youtubeVideo() {
-      if (!this.movie.videos) return;
-      return (
-        "https://www.youtube.com/embed/" + this.movie.videos.results[0].key
-      );
+      if (!this.show.videos) return;
+      return "https://www.youtube.com/embed/" + this.show.videos.results[0].key;
     },
   },
 };

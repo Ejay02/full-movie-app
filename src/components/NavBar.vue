@@ -3,14 +3,12 @@
     <v-app-bar app color="pink" dark>
       <v-icon class="mr-2">fas fa-video</v-icon>
       <v-toolbar-title>Ej Movie</v-toolbar-title>
-      <v-btn text class="ml-2" to="/">Movies</v-btn>
-      <v-btn text class="ml-2" to="/shows">TV Shows</v-btn>
-      <v-btn text class="ml-2" to="/actors">Actors</v-btn>
+
       <!-- <v-btn text class="ml-2">Contact</v-btn> -->
       <v-spacer></v-spacer>
 
       <!-- search -->
-      <v-autocomplete
+      <!-- <v-autocomplete
         clearable
         hide-no-data
         hide-selected
@@ -26,8 +24,10 @@
         <template v-slot:item="{ item }">
           <v-btn text :to="`/movie/${item.id}`">{{ item.title }}</v-btn>
         </template>
-      </v-autocomplete>
-
+      </v-autocomplete> -->
+      <v-btn text class="ml-2" to="/">Movies</v-btn>
+      <v-btn text class="ml-2" to="/shows">TV Shows</v-btn>
+      <v-btn text class="ml-2" to="/actors">Actors</v-btn>
       <v-badge
         bordered
         bottom
