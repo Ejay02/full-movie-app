@@ -17,7 +17,7 @@
         <v-col
           cols="6"
           sm="4"
-          md="2"
+          md="3"
           lg="1"
           xl="1"
           v-for="movie in movies"
@@ -84,35 +84,29 @@ export default {
   min-height: 400px;
 }
 
-/* Force 9 cards per row on large screens */
-@media (min-width: 1264px) {
+.movie-col {
+  flex: 0 0 11.11%;
+  max-width: 11.11%;
+}
+
+@media (max-width: 1263px) {
   .movie-col {
-    flex: 0 0 11.111% !important;
-    max-width: 11.111% !important;
+    flex: 0 0 25%;
+    max-width: 25%;
   }
 }
 
-/* 6 cards per row on medium-large screens */
-@media (min-width: 960px) and (max-width: 1263px) {
+@media (max-width: 959px) {
   .movie-col {
-    flex: 0 0 16.666% !important;
-    max-width: 16.666% !important;
+    flex: 0 0 33.33%;
+    max-width: 33.33%;
   }
 }
 
-/* 4 cards per row on medium screens */
-@media (min-width: 600px) and (max-width: 959px) {
+@media (max-width: 599px) {
   .movie-col {
-    flex: 0 0 25% !important;
-    max-width: 25% !important;
-  }
-}
-
-/* 3 cards per row on small screens */
-@media (min-width: 0px) and (max-width: 599px) {
-  .movie-col {
-    flex: 0 0 33.333% !important;
-    max-width: 33.333% !important;
+    flex: 0 0 50%;
+    max-width: 50%;
   }
 }
 </style>
