@@ -13,7 +13,7 @@
         </v-col>
         <!-- cols="6" sm="6" md="3" lg="3" -->
         <!--  -->
-        <v-col cols="12" sm="8">
+        <v-col cols="6" sm="6" md="3" lg="3">
           <h1 class="grey--text text-darken-3 mt-5">{{ this.movie.title }}</h1>
           <!-- <v-row> -->
           <v-col>
