@@ -2,19 +2,19 @@
   <div class="my-view-page mx-3">
     <ContinueWatchingSection show-clear />
 
-    <div class="hero-copy mt-4">
-      <p class="eyebrow mb-1">Your Saved Picks</p>
+    <div v-if="myViewItems.length || showEmptyState" class="hero-copy mt-6">
+      <p class="eyebrow mb-1">Watchlist</p>
       <h2 class="page-title mb-2">My View</h2>
     </div>
 
-    <div class="saved-section mt-8">
-      <div v-if="!myViewItems.length" class="empty-state-shell">
+    <div v-if="myViewItems.length || showEmptyState" class="saved-section mt-4">
+      <div v-if="showEmptyState" class="empty-state-shell">
         <div class="empty-state">
-          <v-icon size="56" color="rgba(255, 255, 255, 0.45)">
+          <v-icon size="56" color="rgba(255, 255, 255, 0.35)">
             mdi-view-grid-plus-outline
           </v-icon>
-          <h3 class="empty-title mt-4 mb-2">Your View is empty</h3>
-          <p class="empty-copy mb-5">Add items to see them here.</p>
+          <h3 class="empty-title mt-4 mb-2">Your Library is empty</h3>
+          <p class="empty-copy mb-5">Browse content to start watching or add items to your watchlist.</p>
           <v-btn color="error" depressed class="text-none" to="/">
             Browse Content
           </v-btn>
@@ -80,6 +80,15 @@ export default {
   computed: {
     myViewItems() {
       return this.$store.getters.myViewItems;
+    },
+    continueWatchingItems() {
+      return this.$store.getters.continueWatchingItems;
+    },
+    hasContinueWatching() {
+      return this.continueWatchingItems && this.continueWatchingItems.length > 0;
+    },
+    showEmptyState() {
+      return !this.myViewItems.length && !this.hasContinueWatching;
     },
   },
   methods: {
