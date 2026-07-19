@@ -1,6 +1,6 @@
 <template>
   <v-footer dark padless>
-    <v-card flat tile class="flex white--text text-center" style="background-color: #141414;">
+    <v-card flat tile class="footer-shell flex white--text text-center">
       <v-card-text class="white--text text-center">
         <p>
           <strong>Ej's Movie</strong> is a movie database web application created
@@ -48,4 +48,11 @@ export default {
 };
 </script>
 
-<style></style>
+<style>
+.footer-shell {
+  background: rgba(10, 14, 24, 0.7) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+</style>

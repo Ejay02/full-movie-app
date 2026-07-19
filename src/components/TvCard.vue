@@ -1,6 +1,10 @@
 <template>
   <v-hover v-slot="{ hover }" open-delay="200" class="cursor-pointer">
-    <v-card :elevation="hover ? 16 : 2" :class="{ 'on-hover': hover }">
+    <v-card
+      class="media-card"
+      :elevation="hover ? 18 : 0"
+      :class="{ 'media-card--hover': hover }"
+    >
       <router-link :to="`/show/${show.id}`">
         <v-img :src="posterPath" alt="" class="poster-image"></v-img>
       </router-link>
@@ -79,16 +83,57 @@ export default {
 </script>
 
 <style>
-.v-card {
+.media-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
+  border-radius: 24px !important;
+  background: linear-gradient(180deg, rgba(20, 25, 38, 0.88), rgba(10, 13, 22, 0.92)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
+  transition:
+    transform 0.28s ease,
+    box-shadow 0.28s ease,
+    border-color 0.28s ease;
+}
+
+.media-card::before {
+  content: "";
+  position: absolute;
+  inset: -120% auto auto -40%;
+  width: 55%;
+  height: 280%;
+  transform: rotate(20deg) translateX(-160%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: transform 0.6s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.media-card--hover {
+  transform: translateY(-10px) scale(1.02);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.36);
+}
+
+.media-card--hover::before {
+  transform: rotate(20deg) translateX(340%);
 }
 
 .poster-image {
   aspect-ratio: 2 / 3;
   width: 100%;
   object-fit: cover;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
 }
 
 .card-title {
@@ -102,6 +147,7 @@ export default {
 .title-text {
   flex: 1;
   font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.96);
   line-height: 1.2;
   max-height: 2.4em;
   overflow: hidden;
@@ -114,6 +160,7 @@ export default {
 .bookmark-btn {
   flex-shrink: 0;
   margin-left: 4px;
+  color: rgba(255, 255, 255, 0.86);
 }
 
 .content-area {
@@ -143,6 +190,7 @@ export default {
 }
 
 .genre-area {
+  color: rgba(255, 255, 255, 0.64);
   line-height: 1.4;
   overflow: hidden;
   display: -webkit-box;

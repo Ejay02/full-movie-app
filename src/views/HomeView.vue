@@ -18,12 +18,17 @@
     <v-btn color="error" class="mt-4" @click="loadHomePage">Try Again</v-btn>
   </v-container>
 
-  <div class="mx-3" v-else>
-    <h2 class="mb-2 mt-4 grey--text">Popular Movies</h2>
+  <div class="home-page px-2 px-sm-4" v-else>
+    <div class="section-header">
+      <div>
+        <p class="eyebrow mb-1">Tonight's Picks</p>
+        <h2 class="section-title mb-2">Popular Movies</h2>
+      </div>
+    </div>
     <v-alert v-if="!popularMovies.length" outlined type="info" class="mt-6">
       No popular movies are available right now.
     </v-alert>
-    <v-slide-group v-else class="pa-0 mb-6" show-arrows>
+    <v-slide-group v-else class="content-slider pa-0 mb-8" show-arrows>
       <v-slide-item v-for="movie in popularMovies" :key="movie.id">
         <div class="carousel-card mr-4 my-2">
           <MovieCard :movie="movie" :genres="genres" />
@@ -31,11 +36,16 @@
       </v-slide-item>
     </v-slide-group>
 
-    <h2 class="mb-2 mt-4 grey--text">Popular Shows</h2>
+    <div class="section-header">
+      <div>
+        <p class="eyebrow mb-1">Binge Worthy</p>
+        <h2 class="section-title mb-2">Popular Shows</h2>
+      </div>
+    </div>
     <v-alert v-if="!popularShows.length" outlined type="info" class="mt-6">
       No popular shows are available right now.
     </v-alert>
-    <v-slide-group v-else class="pa-0 mb-6" show-arrows>
+    <v-slide-group v-else class="content-slider pa-0 mb-8" show-arrows>
       <v-slide-item v-for="show in popularShows" :key="show.id">
         <div class="carousel-card mr-4 my-2">
           <TvCard :show="show" :genres="genres" />
@@ -118,11 +128,43 @@ export default {
   min-height: 400px;
 }
 
+.home-page {
+  padding-top: 12px;
+}
+
+.section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: 18px;
+}
+
+.eyebrow {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.section-title {
+  color: #ffffff;
+  font-size: 1.8rem;
+  line-height: 1.15;
+}
+
+.content-slider {
+  position: relative;
+}
+
 .carousel-card {
   width: 200px;
 }
 
 @media (max-width: 600px) {
+  .section-title {
+    font-size: 1.45rem;
+  }
+
   .carousel-card {
     width: 150px;
   }

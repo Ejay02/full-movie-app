@@ -1,7 +1,7 @@
 <template>
   <nav>
-    <v-app-bar app color="#141414" dark elevation="2">
-      <v-btn text class="ml-2" to="/">
+    <v-app-bar app flat dark class="glass-nav px-4">
+      <v-btn text class="ml-2 brand-btn" to="/">
         <v-icon class="mr-2">mdi-movie-open</v-icon>
 
         Ej's Movie</v-btn
@@ -28,10 +28,33 @@
           <v-btn text :to="`/movie/${item.id}`">{{ item.title }}</v-btn>
         </template>
       </v-autocomplete> -->
-      <v-btn text class="ml-2" to="/">Home</v-btn>
-      <v-btn text class="ml-2" to="/movies">Movies</v-btn>
-      <v-btn text class="ml-2" to="/shows">TV Shows</v-btn>
-      <v-btn text class="ml-2" to="/my-view">My View</v-btn>
+      <div class="nav-links d-flex align-center">
+        <v-btn text class="ml-2 nav-link" :class="{ 'nav-link--active': isActive('/') }" to="/">Home</v-btn>
+        <v-btn
+          text
+          class="ml-2 nav-link"
+          :class="{ 'nav-link--active': isActive('/movies') }"
+          to="/movies"
+        >
+          Movies
+        </v-btn>
+        <v-btn
+          text
+          class="ml-2 nav-link"
+          :class="{ 'nav-link--active': isActive('/shows') }"
+          to="/shows"
+        >
+          TV Shows
+        </v-btn>
+        <v-btn
+          text
+          class="ml-2 nav-link"
+          :class="{ 'nav-link--active': isActive('/my-view') }"
+          to="/my-view"
+        >
+          My View
+        </v-btn>
+      </div>
       <v-badge
         bordered
         bottom
@@ -52,7 +75,61 @@
 <script>
 export default {
   name: "NavBar",
+  methods: {
+    isActive(path) {
+      if (path === "/") {
+        return this.$route.path === "/";
+      }
+
+      return this.$route.path.startsWith(path);
+    },
+  },
 };
 </script>
 
-<style></style>
+<style>
+.glass-nav {
+  margin: 12px;
+  width: calc(100% - 24px) !important;
+  border-radius: 22px !important;
+  background: rgba(10, 14, 24, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+
+.brand-btn {
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+.nav-link {
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.72) !important;
+  transition: all 0.25s ease;
+}
+
+.nav-link:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nav-link--active {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, rgba(229, 9, 20, 0.9), rgba(255, 82, 82, 0.65));
+  box-shadow: 0 10px 22px rgba(229, 9, 20, 0.28);
+}
+
+@media (max-width: 760px) {
+  .glass-nav {
+    margin: 8px;
+    width: calc(100% - 16px) !important;
+  }
+
+  .nav-links {
+    overflow-x: auto;
+    max-width: 55vw;
+  }
+}
+</style>
