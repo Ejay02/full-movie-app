@@ -1,6 +1,6 @@
 <template>
   <v-footer dark padless>
-    <v-card flat tile class="flex pink white--text text-center">
+    <v-card flat tile class="flex white--text text-center" style="background-color: #141414;">
       <v-card-text class="white--text text-center">
         <p>
           <strong>Ej's Movie</strong> is a movie database web application created

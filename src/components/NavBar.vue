@@ -1,6 +1,6 @@
 <template>
   <nav>
-    <v-app-bar app color="pink" dark>
+    <v-app-bar app color="#141414" dark elevation="2">
       <v-btn text class="ml-2" to="/">
         <v-icon class="mr-2">mdi-movie-open</v-icon>
 
