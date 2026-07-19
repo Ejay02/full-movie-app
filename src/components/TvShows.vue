@@ -11,6 +11,13 @@
     ></v-progress-circular>
   </div>
 
+  <v-container v-else-if="errorMessage">
+    <v-alert outlined type="error" class="mt-6">
+      {{ errorMessage }}
+    </v-alert>
+    <v-btn color="error" class="mt-4" @click="loadShows">Try Again</v-btn>
+  </v-container>
+
   <div class="mx-3" v-else>
     <h2 class="mb-4 mt-4 grey--text text-center">Popular Shows</h2>
 
@@ -43,28 +50,34 @@ export default {
     return {
       shows: [],
       genres: [],
+      errorMessage: "",
       loading: true,
     };
   },
   async mounted() {
-    this.fetchGenres();
-    try {
-      const response = await this.$http.get("/trending/tv/day?language=en-US");
-      this.shows = response.data.results;
-    } catch (error) {
-      console.log(error);
-    } finally {
-      this.loading = false;
-    }
+    await this.loadShows();
   },
   methods: {
-    async fetchGenres() {
+    async loadShows() {
+      this.loading = true;
+      this.errorMessage = "";
+
       try {
-        const response = await this.$http.get("/genre/tv/list");
-        this.genres = response.data.genres;
+        await Promise.all([this.fetchGenres(), this.fetchShows()]);
       } catch (error) {
+        this.errorMessage = "Unable to load TV shows right now.";
         console.log(error);
+      } finally {
+        this.loading = false;
       }
+    },
+    async fetchShows() {
+      const response = await this.$http.get("/trending/tv/day?language=en-US");
+      this.shows = response.data.results;
+    },
+    async fetchGenres() {
+      const response = await this.$http.get("/genre/tv/list");
+      this.genres = response.data.genres;
     },
   },
 };

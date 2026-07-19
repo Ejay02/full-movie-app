@@ -11,12 +11,19 @@
     ></v-progress-circular>
   </div>
 
+  <v-container v-else-if="errorMessage">
+    <v-alert outlined type="error" class="mt-6">
+      {{ errorMessage }}
+    </v-alert>
+    <v-btn color="error" class="mt-4" @click="loadActors">Try Again</v-btn>
+  </v-container>
+
   <div class="mx-3" v-else>
     <h2 class="mt-2 grey--text text-center">Popular Actors</h2>
     <v-container fluid>
       <v-row>
         <v-col
-           cols="6"
+          cols="6"
           sm="4"
           md="3"
           lg="1"
@@ -61,6 +68,7 @@ export default {
   data() {
     return {
       actors: [],
+      errorMessage: "",
       loading: true,
       currentPage: 1,
     };
@@ -69,20 +77,27 @@ export default {
     ActorCard,
   },
   mounted() {
-    this.fetchActors(this.currentPage);
+    this.loadActors();
     // this.scroll();
   },
   methods: {
-    async fetchActors(page) {
+    async loadActors() {
+      this.loading = true;
+      this.errorMessage = "";
+
       try {
-        const response = await this.$http.get("/person/popular?page=" + page);
-        this.actors = response.data.results;
-        // this.actors.push(...response.data.results);
+        await this.fetchActors(this.currentPage);
       } catch (error) {
+        this.errorMessage = "Unable to load actors right now.";
         console.log(error);
       } finally {
         this.loading = false;
       }
+    },
+    async fetchActors(page) {
+      const response = await this.$http.get("/person/popular?page=" + page);
+      this.actors = response.data.results;
+      // this.actors.push(...response.data.results);
     },
     scroll() {
       window.onscroll = () => {
@@ -91,13 +106,13 @@ export default {
           document.documentElement.offsetHeight;
         if (bottomOfWindow) {
           this.currentPage += 1;
-          this.fetchActors(this.currentPage);
+          this.loadActors();
         }
       };
     },
     next() {
       this.currentPage += 1;
-      this.fetchActors(this.currentPage);
+      this.loadActors();
     },
     previous() {
       if (this.currentPage === 1) {
@@ -105,7 +120,7 @@ export default {
       }
 
       this.currentPage -= 1;
-      this.fetchActors(this.currentPage);
+      this.loadActors();
     },
   },
 };
