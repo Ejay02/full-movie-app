@@ -28,12 +28,12 @@
     </v-alert>
 
     <v-container v-else fluid x-small>
-      <v-row>
+      <v-row dense>
         <v-col
-          cols="12"
-          sm="6"
-          md="4"
-          lg="3"
+          cols="6"
+          sm="4"
+          md="3"
+          lg="2"
           xl="2"
           v-for="movie in movies"
           :key="movie.id"

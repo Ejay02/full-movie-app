@@ -2,12 +2,7 @@
   <v-hover v-slot="{ hover }" open-delay="200" class="cursor-pointer">
     <v-card :elevation="hover ? 16 : 2" :class="{ 'on-hover': hover }">
       <router-link :to="`/movie/${movie.id}`">
-        <v-img
-          :src="posterPath"
-          alt=""
-          height="400"
-          class="poster-image"
-        ></v-img>
+        <v-img :src="posterPath" alt="" class="poster-image"></v-img>
       </router-link>
       <v-card-title class="subtitle-2 card-title pa-4">
         <div class="title-text">{{ movie.title }}</div>
@@ -100,21 +95,22 @@ export default {
 }
 
 .poster-image {
-  height: 400px;
+  aspect-ratio: 2 / 3;
+  width: 100%;
   object-fit: cover;
 }
 
 .card-title {
-  min-height: 64px;
+  min-height: 48px;
   display: flex !important;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 16px !important;
+  padding: 12px !important;
 }
 
 .title-text {
   flex: 1;
-  font-size: 1rem;
+  font-size: 0.95rem;
   line-height: 1.2;
   max-height: 2.4em;
   overflow: hidden;
@@ -126,11 +122,11 @@ export default {
 
 .bookmark-btn {
   flex-shrink: 0;
-  margin-left: 8px;
+  margin-left: 4px;
 }
 
 .content-area {
-  padding: 16px;
+  padding: 12px;
 }
 
 .ratings-row {
