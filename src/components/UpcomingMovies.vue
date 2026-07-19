@@ -1,19 +1,19 @@
 <template>
   <div id="example">
-    <h2 class="mx-3 grey--text text-center mt-4 mb-6">Upcoming Movies</h2>
+    <h2 class="mx-3 grey--text text-center mt-4 mb-6">Upcoming Movies & Shows</h2>
     <carousel-3d
       :controls-visible="true"
       :clickable="false"
-      :key="upcomingMovies.length"
-      :listData="upcomingMovies"
+      :key="upcomingItems.length"
+      :listData="upcomingItems"
       :height="500"
     >
-      <slide :index="i" :key="i" v-for="(movie, i) in this.upcomingMovies">
+      <slide :index="i" :key="i" v-for="(item, i) in upcomingItems">
         <figure>
-          <img :src="'https://image.tmdb.org/t/p/w500/' + movie.poster_path" />
+          <img :src="'https://image.tmdb.org/t/p/w500/' + item.poster_path" />
           <figcaption>
-            <v-btn :to="`/movie/${movie.id}`" text color="white">
-              {{ movie.title }}</v-btn
+            <v-btn :to="item.media_type === 'tv' ? `/show/${item.id}` : `/movie/${item.id}`" text color="white">
+              {{ item.title || item.name }}</v-btn
             >
           </figcaption>
         </figure>
@@ -27,7 +27,7 @@ import { Carousel3d, Slide } from "vue-carousel-3d";
 export default {
   data() {
     return {
-      upcomingMovies: [],
+      upcomingItems: [],
     };
   },
   components: {
@@ -35,13 +35,27 @@ export default {
     Slide,
   },
   mounted() {
-    this.fetchUpcomingMovies();
+    this.fetchUpcomingItems();
   },
   methods: {
-    async fetchUpcomingMovies() {
+    async fetchUpcomingItems() {
       try {
-        const response = await this.$http.get("/movie/upcoming");
-        this.upcomingMovies = response.data.results.slice(1, 6);
+        const [moviesResponse, showsResponse] = await Promise.all([
+          this.$http.get("/movie/upcoming"),
+          this.$http.get("/tv/on_the_air")
+        ]);
+
+        const movies = moviesResponse.data.results.slice(1, 4).map(m => ({ ...m, media_type: 'movie' }));
+        const shows = showsResponse.data.results.slice(0, 3).map(s => ({ ...s, media_type: 'tv' }));
+        
+        // Interleave them so it's movie, show, movie, show
+        const combined = [];
+        for (let i = 0; i < Math.max(movies.length, shows.length); i++) {
+          if (movies[i]) combined.push(movies[i]);
+          if (shows[i]) combined.push(shows[i]);
+        }
+
+        this.upcomingItems = combined;
       } catch (error) {
         console.log(error);
       }
