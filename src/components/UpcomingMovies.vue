@@ -39,10 +39,12 @@ export default {
   },
   methods: {
     async fetchUpcomingMovies() {
-      const response = await this.$http.get(
-        "https://api.themoviedb.org/3/movie/upcoming"
-      );
-      this.upcomingMovies = response.data.results.slice(1, 6);
+      try {
+        const response = await this.$http.get("/movie/upcoming");
+        this.upcomingMovies = response.data.results.slice(1, 6);
+      } catch (error) {
+        console.log(error);
+      }
     },
   },
 };

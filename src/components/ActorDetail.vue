@@ -110,10 +110,10 @@
 export default {
   data() {
     return {
-      socialDetails: [],
+      socialDetails: {},
       actor: {},
       knownFor: [],
-      castMovies: {},
+      castMovies: [],
     };
   },
   mounted() {
@@ -123,18 +123,16 @@ export default {
   },
   methods: {
     async fetchActor(actorId) {
-      const response = await this.$http.get(
-        "https://api.themoviedb.org/3/person/" + actorId
-      );
+      const response = await this.$http.get("/person/" + actorId);
       this.actor = response.data;
     },
     async fetchCredits(actorId) {
       const response = await this.$http.get(
-        "https://api.themoviedb.org/3/person/" + actorId + "/combined_credits"
+        "/person/" + actorId + "/combined_credits"
       );
       this.castMovies = response.data.cast;
       this.knownFor = response.data.cast
-        .filter((x) => x.media_type == "movie")
+        .filter((x) => x.media_type === "movie")
         .slice(1, 6);
       /*this.knownFor = response.data.cast.slice(
         Math.max(response.data.cast.length - 5, 1)
@@ -148,13 +146,11 @@ export default {
       return "https://image.tmdb.org/t/p/w185/" + posterPath;
     },
     async fetchSocial(actorId) {
-      const response = await this.$http.get(
-        "https://api.themoviedb.org/3/person/" + actorId + "/external_ids"
-      );
+      const response = await this.$http.get("/person/" + actorId + "/external_ids");
       this.socialDetails = response.data;
     },
     castDetails(cast) {
-      return parseInt(cast.release_date) + " .";
+      return cast.release_date ? parseInt(cast.release_date, 10) + " ." : "";
     },
   },
 };

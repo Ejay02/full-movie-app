@@ -107,7 +107,7 @@
               </v-card-text>
               <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn color="error" text @click="dialog = flase">Close</v-btn>
+                <v-btn color="error" text @click="dialog = false">Close</v-btn>
               </v-card-actions>
             </v-card>
           </v-dialog>
@@ -136,10 +136,14 @@ export default {
     return {
       movie: {
         credits: {
-          crew: {},
+          crew: [],
+          cast: [],
         },
         images: {
-          backdrops: {},
+          backdrops: [],
+        },
+        videos: {
+          results: [],
         },
       },
       isVideo: false,
@@ -147,15 +151,10 @@ export default {
       dialog: false,
     };
   },
-  mounted() {
-    this.fetchMovie(this.$route.params.id);
-    this.fetchTv(this.$route.params.id);
-  },
   watch: {
-    "$route.params.id": {
+    $route: {
       handler() {
-        this.fetchMovie(this.$route.params.id);
-        this.fetchTv(this.$route.params.id);
+        this.fetchMedia();
       },
       immediate: true,
     },
@@ -166,15 +165,12 @@ export default {
     },
   },
   methods: {
-    async fetchMovie(movieId) {
+    async fetchMedia() {
+      const mediaType = this.$route.params.mediaType;
+      const mediaId = this.$route.params.id;
+      const endpoint = mediaType === "tv" ? "tv" : "movie";
       const response = await this.$http.get(
-        "/movie/" + movieId + "?append_to_response=credits,videos,images"
-      );
-      this.movie = response.data;
-    },
-    async fetchTv(movieId) {
-      const response = await this.$http.get(
-        "/tv/" + movieId + "?append_to_response=credits,videos,images"
+        `/${endpoint}/${mediaId}?append_to_response=credits,videos,images`
       );
       this.movie = response.data;
     },
@@ -186,7 +182,7 @@ export default {
       this.isVideo = false;
     },
     youtubeVideo() {
-      if (!this.movie.videos) return;
+      if (!this.movie.videos || !this.movie.videos.results.length) return "";
       return (
         "https://www.youtube.com/embed/" + this.movie.videos.results[0].key
       );

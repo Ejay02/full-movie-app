@@ -25,17 +25,24 @@ export default {
   },
   computed: {
     profileImage() {
+      if (!this.actor.profile_path) {
+        return "https://via.placeholder.com/235x235";
+      }
+
       return (
         "https://image.tmdb.org/t/p/w235_and_h235_face/" +
         this.actor.profile_path
       );
     },
     knownFor() {
-      let knownStr = "";
-      for (let i; i < this.actor.known_for.length - 1; i++) {
-        knownStr += this.actor.known_for[i].title;
+      if (!this.actor.known_for || !this.actor.known_for.length) {
+        return "";
       }
-      return knownStr;
+
+      return this.actor.known_for
+        .map((item) => item.title || item.name)
+        .filter(Boolean)
+        .join(", ");
     },
   },
 };

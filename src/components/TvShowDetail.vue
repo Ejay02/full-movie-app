@@ -108,7 +108,7 @@
               </v-card-text>
               <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn color="error" text @click="dialog = flase">Close</v-btn>
+                <v-btn color="error" text @click="dialog = false">Close</v-btn>
               </v-card-actions>
             </v-card>
           </v-dialog>
@@ -137,19 +137,20 @@ export default {
     return {
       show: {
         credits: {
-          crew: {},
+          crew: [],
+          cast: [],
         },
         images: {
-          backdrops: {},
+          backdrops: [],
+        },
+        videos: {
+          results: [],
         },
       },
       isVideo: false,
       mediaURL: "",
       dialog: false,
     };
-  },
-  mounted() {
-    this.fetchShow(this.$route.params.id);
   },
   watch: {
     "$route.params.id": {
@@ -179,7 +180,7 @@ export default {
       this.isVideo = false;
     },
     youtubeVideo() {
-      if (!this.show.videos) return;
+      if (!this.show.videos || !this.show.videos.results.length) return "";
       return "https://www.youtube.com/embed/" + this.show.videos.results[0].key;
     },
   },

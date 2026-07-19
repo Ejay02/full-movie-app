@@ -54,7 +54,6 @@
 </template>
 
 <script>
-let currentPage = 1;
 import ActorCard from "../components/ActorCard.vue";
 export default {
   // eslint-disable-next-line vue/multi-word-component-names
@@ -63,21 +62,20 @@ export default {
     return {
       actors: [],
       loading: true,
+      currentPage: 1,
     };
   },
   components: {
     ActorCard,
   },
   mounted() {
-    this.fetchActors(currentPage);
+    this.fetchActors(this.currentPage);
     // this.scroll();
   },
   methods: {
     async fetchActors(page) {
       try {
-        const response = await this.$http.get(
-          "https://api.themoviedb.org/3/person/popular?page=" + page
-        );
+        const response = await this.$http.get("/person/popular?page=" + page);
         this.actors = response.data.results;
         // this.actors.push(...response.data.results);
       } catch (error) {
@@ -92,18 +90,22 @@ export default {
           document.documentElement.scrollTop + window.innerHeight ===
           document.documentElement.offsetHeight;
         if (bottomOfWindow) {
-          currentPage += 1;
-          this.fetchActors((currentPage += 1));
+          this.currentPage += 1;
+          this.fetchActors(this.currentPage);
         }
       };
     },
     next() {
-      currentPage += 1;
-      this.fetchActors(currentPage);
+      this.currentPage += 1;
+      this.fetchActors(this.currentPage);
     },
     previous() {
-      currentPage -= 1;
-      this.fetchActors(currentPage);
+      if (this.currentPage === 1) {
+        return;
+      }
+
+      this.currentPage -= 1;
+      this.fetchActors(this.currentPage);
     },
   },
 };

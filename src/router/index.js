@@ -18,7 +18,7 @@ const routes = [
     component: HomeView,
   },
   {
-    path: "/:name/:id",
+    path: "/trending/:mediaType/:id",
     name: "trending",
     component: HomeDetail,
   },

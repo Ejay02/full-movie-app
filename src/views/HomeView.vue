@@ -25,7 +25,7 @@
           v-for="movie in movies"
           :key="movie.id"
         >
-          <HomeCard :movie="movie" :show="show" :genres="genres" />
+          <HomeCard :movie="movie" :genres="genres" />
         </v-col>
       </v-row>
     </v-container>
@@ -46,14 +46,17 @@ export default {
   data: function () {
     return {
       movies: [],
-      shows: [],
       genres: [],
       loading: true,
     };
   },
   async mounted() {
     try {
-      await Promise.all([this.fetchGenres(), this.fetchMovies()]);
+      await Promise.all([
+        this.fetchMovieGenres(),
+        this.fetchTvGenres(),
+        this.fetchMovies(),
+      ]);
     } catch (error) {
       console.log(error);
     } finally {
@@ -66,16 +69,29 @@ export default {
         const response = await this.$http.get(
           "/trending/all/day?language=en-US"
         );
-        this.movies = response.data.results;
-        console.log(response.data.results);
+        this.movies = response.data.results.filter((item) =>
+          ["movie", "tv"].includes(item.media_type)
+        );
       } catch (error) {
         console.log(error);
       }
     },
-    async fetchGenres() {
+    async fetchMovieGenres() {
       try {
         const response = await this.$http.get("/genre/movie/list");
         this.genres = response.data.genres;
+      } catch (error) {
+        console.log(error);
+      }
+    },
+    async fetchTvGenres() {
+      try {
+        const response = await this.$http.get("/genre/tv/list");
+        const existingIds = new Set(this.genres.map((genre) => genre.id));
+        const tvGenres = response.data.genres.filter(
+          (genre) => !existingIds.has(genre.id)
+        );
+        this.genres = [...this.genres, ...tvGenres];
       } catch (error) {
         console.log(error);
       }

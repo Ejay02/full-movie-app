@@ -56,9 +56,6 @@ export default {
     movie: {
       required: true,
     },
-    show: {
-      required: true,
-    },
     genres: {
       required: true,
     },
@@ -74,11 +71,11 @@ export default {
     },
 
     dynamicPath() {
-      const title = (this.movie.title || this.movie.name)
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "");
-      return `/${title}/${this.movie.id}`;
+      if (this.movie.media_type === "tv") {
+        return `/show/${this.movie.id}`;
+      }
+
+      return `/movie/${this.movie.id}`;
     },
   },
   methods: {
