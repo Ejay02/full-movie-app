@@ -89,7 +89,7 @@ export default {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  border-radius: 16px !important;
+  border-radius: 12px !important;
   background: linear-gradient(180deg, rgba(20, 25, 38, 0.88), rgba(10, 13, 22, 0.92)) !important;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
@@ -132,8 +132,8 @@ export default {
   aspect-ratio: 2 / 3;
   width: 100%;
   object-fit: cover;
-  border-top-left-radius: 16px;
-  border-top-right-radius: 16px;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
 }
 
 .card-title {
