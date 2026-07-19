@@ -17,44 +17,50 @@
     </v-alert>
     <v-btn color="error" class="mt-4" @click="loadHomePage">Try Again</v-btn>
   </v-container>
+
   <div class="mx-3" v-else>
-    <h2 class="mb-4 mt-4 grey--text text-center">Trending Today</h2>
-
-    <v-alert v-if="!movies.length" outlined type="info" class="mt-6">
-      No trending titles are available right now.
+    <h2 class="mb-2 mt-4 grey--text">Popular Movies</h2>
+    <v-alert v-if="!popularMovies.length" outlined type="info" class="mt-6">
+      No popular movies are available right now.
     </v-alert>
+    <v-slide-group v-else class="pa-0 mb-6" show-arrows>
+      <v-slide-item v-for="movie in popularMovies" :key="movie.id">
+        <div class="carousel-card mr-4 my-2">
+          <MovieCard :movie="movie" :genres="genres" />
+        </div>
+      </v-slide-item>
+    </v-slide-group>
 
-    <template v-else>
-      <v-container fluid x-small>
-        <v-row dense>
-          <v-col
-            cols="6"
-            sm="4"
-            md="3"
-            lg="2"
-            xl="2"
-            v-for="movie in movies"
-            :key="movie.id"
-          >
-            <HomeCard :movie="movie" :genres="genres" />
-          </v-col>
-        </v-row>
-      </v-container>
-      <upcoming-movies />
-    </template>
+    <h2 class="mb-2 mt-4 grey--text">Popular Shows</h2>
+    <v-alert v-if="!popularShows.length" outlined type="info" class="mt-6">
+      No popular shows are available right now.
+    </v-alert>
+    <v-slide-group v-else class="pa-0 mb-6" show-arrows>
+      <v-slide-item v-for="show in popularShows" :key="show.id">
+        <div class="carousel-card mr-4 my-2">
+          <TvCard :show="show" :genres="genres" />
+        </div>
+      </v-slide-item>
+    </v-slide-group>
+
+    <upcoming-movies />
   </div>
 </template>
 <script>
-import HomeCard from "../components/HomeCard.vue";
+import MovieCard from "../components/MovieCard.vue";
+import TvCard from "../components/TvCard.vue";
 import UpcomingMovies from "@/components/UpcomingMovies.vue";
+
 export default {
   components: {
-    HomeCard,
+    MovieCard,
+    TvCard,
     UpcomingMovies,
   },
   data: function () {
     return {
-      movies: [],
+      popularMovies: [],
+      popularShows: [],
       genres: [],
       errorMessage: "",
       loading: true,
@@ -72,20 +78,25 @@ export default {
         await Promise.all([
           this.fetchMovieGenres(),
           this.fetchTvGenres(),
-          this.fetchMovies(),
+          this.fetchPopularMovies(),
+          this.fetchPopularShows(),
         ]);
       } catch (error) {
-        this.errorMessage = "Unable to load trending titles right now.";
+        this.errorMessage = "Unable to load titles right now.";
         console.log(error);
       } finally {
         this.loading = false;
       }
     },
-    async fetchMovies() {
-      const response = await this.$http.get("/trending/all/day?language=en-US");
-      this.movies = response.data.results.filter((item) =>
-        ["movie", "tv"].includes(item.media_type),
+    async fetchPopularMovies() {
+      const response = await this.$http.get(
+        "/trending/movie/day?language=en-US",
       );
+      this.popularMovies = response.data.results;
+    },
+    async fetchPopularShows() {
+      const response = await this.$http.get("/trending/tv/day?language=en-US");
+      this.popularShows = response.data.results;
     },
     async fetchMovieGenres() {
       const response = await this.$http.get("/genre/movie/list");
@@ -105,5 +116,15 @@ export default {
 <style>
 .loading-container {
   min-height: 400px;
+}
+
+.carousel-card {
+  width: 200px;
+}
+
+@media (max-width: 600px) {
+  .carousel-card {
+    width: 150px;
+  }
 }
 </style>
