@@ -28,9 +28,10 @@
           <v-btn text :to="`/movie/${item.id}`">{{ item.title }}</v-btn>
         </template>
       </v-autocomplete> -->
+      <v-btn text class="ml-2" to="/">Home</v-btn>
       <v-btn text class="ml-2" to="/movies">Movies</v-btn>
       <v-btn text class="ml-2" to="/shows">TV Shows</v-btn>
-      <v-btn text class="ml-2" to="/actors">Actors</v-btn>
+      <v-btn text class="ml-2" to="/my-view">My View</v-btn>
       <v-badge
         bordered
         bottom
