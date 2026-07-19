@@ -19,7 +19,7 @@
                     color="error"
                     :href="'https://facebook.com/' + socialDetails.facebook_id"
                   >
-                    <v-icon dark> fab fa-facebook-f </v-icon>
+                    <v-icon dark>mdi-facebook</v-icon>
                   </v-btn>
                   <v-btn
                     class="mx-2"
@@ -31,7 +31,7 @@
                       'https://instagram.com/' + socialDetails.instagram_id
                     "
                   >
-                    <v-icon dark> fab fa-instagram </v-icon>
+                    <v-icon dark>mdi-instagram</v-icon>
                   </v-btn>
                   <v-btn
                     class="mx-2"
@@ -41,10 +41,10 @@
                     color="error"
                     :href="'https://twitter.com/' + socialDetails.twitter_id"
                   >
-                    <v-icon dark> fab fa-twitter </v-icon>
+                    <v-icon dark>mdi-twitter</v-icon>
                   </v-btn>
                   <v-btn class="mx-2" fab dark small color="error">
-                    <v-icon dark> fas fa-globe-asia </v-icon>
+                    <v-icon dark>mdi-web</v-icon>
                   </v-btn>
                 </v-row>
               </v-card-text>
@@ -56,9 +56,9 @@
           <v-row>
             <v-col cols="12">
               <v-btn text>
-                <v-icon color="error">fas fa-birthday-cake</v-icon>
+                <v-icon color="error">mdi-cake-variant</v-icon>
               </v-btn>
-              <span class="grey--text"> 1988-12-16 (31) </span>
+              <span class="grey--text">{{ birthdayLabel }}</span>
             </v-col>
           </v-row>
 
@@ -128,7 +128,7 @@ export default {
     },
     async fetchCredits(actorId) {
       const response = await this.$http.get(
-        "/person/" + actorId + "/combined_credits"
+        "/person/" + actorId + "/combined_credits",
       );
       this.castMovies = response.data.cast;
       this.knownFor = response.data.cast
@@ -146,11 +146,22 @@ export default {
       return "https://image.tmdb.org/t/p/w185/" + posterPath;
     },
     async fetchSocial(actorId) {
-      const response = await this.$http.get("/person/" + actorId + "/external_ids");
+      const response = await this.$http.get(
+        "/person/" + actorId + "/external_ids",
+      );
       this.socialDetails = response.data;
     },
     castDetails(cast) {
       return cast.release_date ? parseInt(cast.release_date, 10) + " ." : "";
+    },
+  },
+  computed: {
+    birthdayLabel() {
+      if (!this.actor.birthday) {
+        return "Birthday unavailable";
+      }
+
+      return this.actor.birthday;
     },
   },
 };

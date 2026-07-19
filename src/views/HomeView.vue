@@ -28,14 +28,13 @@
       <v-container fluid x-small>
         <v-row>
           <v-col
-            cols="6"
-            sm="4"
-            md="3"
-            lg="1"
-            xl="1"
+            cols="12"
+            sm="6"
+            md="4"
+            lg="3"
+            xl="2"
             v-for="movie in movies"
             :key="movie.id"
-            class="movie-col"
           >
             <HomeCard :movie="movie" :genres="genres" />
           </v-col>
@@ -106,31 +105,5 @@ export default {
 <style>
 .loading-container {
   min-height: 400px;
-}
-
-.movie-col {
-  flex: 0 0 11.11%;
-  max-width: 11.11%;
-}
-
-@media (max-width: 1263px) {
-  .movie-col {
-    flex: 0 0 25%;
-    max-width: 25%;
-  }
-}
-
-@media (max-width: 959px) {
-  .movie-col {
-    flex: 0 0 33.33%;
-    max-width: 33.33%;
-  }
-}
-
-@media (max-width: 599px) {
-  .movie-col {
-    flex: 0 0 50%;
-    max-width: 50%;
-  }
 }
 </style>

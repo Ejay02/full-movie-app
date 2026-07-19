@@ -30,11 +30,11 @@
     <v-container v-else fluid x-small>
       <v-row>
         <v-col
-          cols="6"
-          sm="4"
-          md="3"
-          lg="1"
-          xl="1"
+          cols="12"
+          sm="6"
+          md="4"
+          lg="3"
+          xl="2"
           v-for="movie in movies"
           :key="movie.id"
         >

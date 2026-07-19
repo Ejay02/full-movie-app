@@ -1,8 +1,8 @@
 <template>
   <nav>
     <v-app-bar app color="pink" dark>
-      <v-btn text class="ml-2" to="/" >
-        <v-icon class="mr-2">fas fa-video</v-icon>
+      <v-btn text class="ml-2" to="/">
+        <v-icon class="mr-2">mdi-movie-open</v-icon>
 
         Ej's Movie</v-btn
       >
@@ -47,9 +47,6 @@
     </v-app-bar>
   </nav>
 </template>
-<!-- https://api.themoviedb.org/3/search/tv -->
-
-<!-- https://api.themoviedb.org/3/search/movie -->
 
 <script>
 export default {
