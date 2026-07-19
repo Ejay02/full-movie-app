@@ -1,13 +1,6 @@
 import Vue from "vue";
 import VueRouter from "vue-router";
 import HomeView from "../views/HomeView.vue";
-import Actors from "../components/Actors.vue";
-import TvShows from "../components/TvShows.vue";
-import MovieDetail from "../components/MovieDetail.vue";
-import ActorDetail from "../components/ActorDetail.vue";
-import TvShowDetail from "../components/TvShowDetail.vue";
-import PopularMovies from "@/components/PopularMovies.vue";
-import HomeDetail from "../components/HomeDetail.vue";
 
 Vue.use(VueRouter);
 
@@ -20,27 +13,27 @@ const routes = [
   {
     path: "/trending/:mediaType/:id",
     name: "trending",
-    component: HomeDetail,
+    component: () => import("../components/HomeDetail.vue"),
   },
   {
     path: "/movies",
     name: "movies",
-    component: PopularMovies,
+    component: () => import("../components/PopularMovies.vue"),
   },
   {
     path: "/movie/:id",
     name: "movie",
-    component: MovieDetail,
+    component: () => import("../components/MovieDetail.vue"),
   },
   {
     path: "/actors",
     name: "actors",
-    component: Actors,
+    component: () => import("../components/Actors.vue"),
   },
   {
     path: "/actor/:id",
     name: "actor",
-    component: ActorDetail,
+    component: () => import("../components/ActorDetail.vue"),
   },
   {
     path: "/about",
@@ -54,12 +47,12 @@ const routes = [
   {
     path: "/shows",
     name: "tvShows",
-    component: TvShows,
+    component: () => import("../components/TvShows.vue"),
   },
   {
     path: "/show/:id",
     name: "tvShow",
-    component: TvShowDetail,
+    component: () => import("../components/TvShowDetail.vue"),
   },
 ];
 

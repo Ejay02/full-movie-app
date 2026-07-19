@@ -21,10 +21,14 @@
   <div class="mx-3" v-else>
     <h2 class="mb-4 mt-4 grey--text text-center">Popular Shows</h2>
 
-    <v-container fluid>
+    <v-alert v-if="!shows.length" outlined type="info" class="mt-6">
+      No TV shows are available right now.
+    </v-alert>
+
+    <v-container v-else fluid>
       <v-row>
         <v-col
-            cols="6"
+          cols="6"
           sm="4"
           md="3"
           lg="1"

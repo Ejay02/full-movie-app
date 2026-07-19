@@ -53,35 +53,7 @@
 
 <script>
 export default {
-  data: () => ({
-    drawer: null,
-    model: "",
-    search: null,
-    movies: [],
-    shows: [],
-  }),
-  mounted() {
-    this.loadMovies();
-    this.loadShows();
-  },
-  methods: {
-    loadMovies: async function () {
-      try {
-        const response = await this.$http.get("/movie/popular");
-        this.movies = response.data.results;
-      } catch (error) {
-        console.log(error);
-      }
-    },
-    loadShows: async function () {
-      try {
-        const response = await this.$http.get("/tv/popular");
-        this.shows = response.data.results;
-      } catch (error) {
-        console.log(error);
-      }
-    },
-  },
+  name: "NavBar",
 };
 </script>
 

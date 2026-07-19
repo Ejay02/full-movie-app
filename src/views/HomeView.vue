@@ -19,24 +19,30 @@
   </v-container>
   <div class="mx-3" v-else>
     <h2 class="mb-4 mt-4 grey--text text-center">Trending Today</h2>
-    <h2 class="mb-4 mt-4 grey--text text-center">Trending Today</h2>
-    <v-container fluid x-small>
-      <v-row>
-        <v-col
-          cols="6"
-          sm="4"
-          md="3"
-          lg="1"
-          xl="1"
-          v-for="movie in movies"
-          :key="movie.id"
-          class="movie-col"
-        >
-          <HomeCard :movie="movie" :genres="genres" />
-        </v-col>
-      </v-row>
-    </v-container>
-    <upcoming-movies />
+
+    <v-alert v-if="!movies.length" outlined type="info" class="mt-6">
+      No trending titles are available right now.
+    </v-alert>
+
+    <template v-else>
+      <v-container fluid x-small>
+        <v-row>
+          <v-col
+            cols="6"
+            sm="4"
+            md="3"
+            lg="1"
+            xl="1"
+            v-for="movie in movies"
+            :key="movie.id"
+            class="movie-col"
+          >
+            <HomeCard :movie="movie" :genres="genres" />
+          </v-col>
+        </v-row>
+      </v-container>
+      <upcoming-movies />
+    </template>
   </div>
 </template>
 <script>

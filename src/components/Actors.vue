@@ -20,7 +20,12 @@
 
   <div class="mx-3" v-else>
     <h2 class="mt-2 grey--text text-center">Popular Actors</h2>
-    <v-container fluid>
+
+    <v-alert v-if="!actors.length" outlined type="info" class="mt-6">
+      No actors are available right now.
+    </v-alert>
+
+    <v-container v-else fluid>
       <v-row>
         <v-col
           cols="6"
@@ -33,17 +38,19 @@
         >
           <ActorCard :actor="actor" />
         </v-col>
-        <v-col cols="12" class="d-flex justify-center mt-5">
+        <v-col cols="12" class="d-flex justify-center align-center mt-5">
           <v-btn
             class="mx-2"
             fab
             dark
             small
             color="error"
+            :disabled="currentPage === 1"
             v-on:click.prevent="previous()"
           >
-            <v-icon dark> fas fa-step-backward </v-icon>
+            <v-icon dark>mdi-skip-previous</v-icon>
           </v-btn>
+          <span class="grey--text text--darken-1">Page {{ currentPage }}</span>
           <v-btn
             class="mx-2"
             fab
@@ -52,7 +59,7 @@
             color="error"
             v-on:click.prevent="next()"
           >
-            <v-icon dark> fas fa-step-forward </v-icon>
+            <v-icon dark>mdi-skip-next</v-icon>
           </v-btn>
         </v-col>
       </v-row>

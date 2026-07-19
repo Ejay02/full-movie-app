@@ -15,16 +15,22 @@
     <v-alert outlined type="error" class="mt-6">
       {{ errorMessage }}
     </v-alert>
-    <v-btn color="error" class="mt-4" @click="loadPopularMovies">Try Again</v-btn>
+    <v-btn color="error" class="mt-4" @click="loadPopularMovies"
+      >Try Again</v-btn
+    >
   </v-container>
 
   <div class="mx-3" v-else>
     <h2 class="mb-4 mt-4 grey--text text-center">Popular Movies</h2>
 
-    <v-container fluid x-small>
+    <v-alert v-if="!movies.length" outlined type="info" class="mt-6">
+      No movies are available right now.
+    </v-alert>
+
+    <v-container v-else fluid x-small>
       <v-row>
         <v-col
-           cols="6"
+          cols="6"
           sm="4"
           md="3"
           lg="1"
@@ -72,7 +78,9 @@ export default {
       }
     },
     async fetchMovies() {
-      const response = await this.$http.get("/trending/movie/day?language=en-US");
+      const response = await this.$http.get(
+        "/trending/movie/day?language=en-US",
+      );
       this.movies = response.data.results;
     },
     async fetchGenres() {

@@ -41,12 +41,28 @@ Check out the live demo of the app [here](https://latest-movie-app-ej.netlify.ap
     npm install
     ```
 
-3. Start the development server:
+4. Create a local environment file and add your TMDB bearer token:
+    ```sh
+    copy .env.example .env
+    ```
+
+5. Start the TMDB proxy in one terminal:
+    ```sh
+    npm run proxy
+    ```
+
+6. Start the development server in a second terminal:
     ```sh
     npm run serve
     ```
 
-6. Open your browser and go to `http://localhost:8080` to see the app in action.
+7. Open your browser and go to `http://localhost:8080` to see the app in action.
+
+## Security
+
+- TMDB requests now go through a local or Netlify-hosted proxy instead of exposing the bearer token in the browser bundle.
+- Set `TMDB_API_TOKEN` in `.env` for local proxy usage.
+- Netlify deployments should configure `TMDB_API_TOKEN` as an environment variable for the function runtime.
 
 ## Contributing
 
