@@ -130,12 +130,14 @@ export default {
     rgba(6, 8, 14, 0.08),
     rgba(6, 8, 14, 0.82)
   );
+  pointer-events: none;
 }
 
 .preview-frame {
   width: 100%;
   height: 100%;
   border: 0;
+  pointer-events: none;
 }
 
 .preview-fallback {

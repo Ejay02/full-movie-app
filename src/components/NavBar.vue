@@ -11,23 +11,19 @@
       <v-spacer></v-spacer>
 
       <!-- search -->
-      <!-- <v-autocomplete
-        clearable
-        hide-no-data
-        hide-selected
-        color="white"
-        label="search"
-        prepend-inner-icon="search"
+      <v-text-field
+        v-model="searchQuery"
         flat
-        :items="movies || shows"
-        item-text="title"
-        item-value="id"
-        id="search"
-      >
-        <template v-slot:item="{ item }">
-          <v-btn text :to="`/movie/${item.id}`">{{ item.title }}</v-btn>
-        </template>
-      </v-autocomplete> -->
+        solo-inverted
+        dense
+        hide-details
+        prepend-inner-icon="mdi-magnify"
+        label="Search..."
+        class="search-bar mr-4"
+        clearable
+        @keydown.enter="triggerSearch"
+      ></v-text-field>
+
       <div class="nav-links d-flex align-center">
         <v-btn text class="ml-2 nav-link" :class="{ 'nav-link--active': isActive('/') }" to="/">Home</v-btn>
         <v-btn
@@ -75,6 +71,16 @@
 <script>
 export default {
   name: "NavBar",
+  data() {
+    return {
+      searchQuery: this.$route.query.q || "",
+    };
+  },
+  watch: {
+    "$route.query.q"(newVal) {
+      this.searchQuery = newVal || "";
+    },
+  },
   methods: {
     isActive(path) {
       if (path === "/") {
@@ -82,6 +88,16 @@ export default {
       }
 
       return this.$route.path.startsWith(path);
+    },
+    triggerSearch() {
+      const q = this.searchQuery ? this.searchQuery.trim() : "";
+      if (!q) {
+        return;
+      }
+      this.$router.push({
+        path: "/search",
+        query: { q },
+      }).catch(() => {});
     },
   },
 };
@@ -97,6 +113,20 @@ export default {
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+
+.search-bar {
+  max-width: 200px;
+  transition: max-width 0.3s ease;
+}
+
+.search-bar .v-input__control {
+  min-height: 36px !important;
+  border-radius: 20px !important;
+}
+
+.search-bar.v-text-field--solo-inverted.v-input--is-focused {
+  max-width: 280px;
 }
 
 .brand-btn {

@@ -121,11 +121,16 @@ export default {
     },
     resumeRoute(item) {
       const basePath = item.mediaType === "tv" ? `/show/${item.mediaId}` : `/movie/${item.mediaId}`;
+      const query = { autoplay: "1" };
+      
+      if (item.mediaType === "tv" && item.season) {
+        query.season = String(item.season);
+        query.episode = String(item.episode || 1);
+      }
+      
       return {
         path: basePath,
-        query: {
-          autoplay: "1",
-        },
+        query,
       };
     },
     removeItem(itemId) {

@@ -102,6 +102,8 @@ function normalizeWatchItem(item) {
       : 0,
     progressPercent,
     watchedAt: item.watchedAt || Date.now(),
+    season: item.season,
+    episode: item.episode,
   };
 }
 

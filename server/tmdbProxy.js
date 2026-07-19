@@ -1,7 +1,7 @@
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
 function getTmdbToken() {
-  return process.env.TMDB_API_TOKEN;
+  return process.env.TMDB_API_TOKEN || process.env.API_TOKEN;
 }
 
 function createErrorResponse(statusCode, message) {
