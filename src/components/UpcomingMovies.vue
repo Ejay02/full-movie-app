@@ -9,16 +9,47 @@
       :height="500"
     >
       <slide :index="i" :key="i" v-for="(item, i) in upcomingItems">
-        <figure>
+        <figure class="upcoming-figure">
           <img :src="'https://image.tmdb.org/t/p/w500/' + item.poster_path" />
-          <figcaption>
-            <v-btn :to="item.media_type === 'tv' ? `/show/${item.id}` : `/movie/${item.id}`" text color="white">
-              {{ item.title || item.name }}</v-btn
-            >
+          <figcaption class="d-flex justify-center align-center">
+            <v-btn @click.prevent="openTrailer(item)" text color="white" class="font-weight-bold">
+              <v-icon left size="30">mdi-play-circle</v-icon>
+              Watch Trailer
+            </v-btn>
           </figcaption>
         </figure>
       </slide>
     </carousel-3d>
+
+    <!-- Trailer Dialog -->
+    <v-dialog v-model="dialog" max-width="800px" persistent>
+      <v-card dark>
+        <v-card-title class="headline d-flex justify-space-between align-center">
+          <span>Trailer</span>
+          <v-btn icon @click="closeTrailer">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-card-text class="pa-0">
+          <div v-if="trailerLoading" class="d-flex justify-center py-10">
+            <v-progress-circular indeterminate color="primary"></v-progress-circular>
+          </div>
+          <div v-else-if="youtubeKey" class="video-container">
+            <iframe
+              width="100%"
+              height="450"
+              :src="`https://www.youtube.com/embed/${youtubeKey}?autoplay=1`"
+              frameborder="0"
+              allow="autoplay; encrypted-media"
+              allowfullscreen
+            ></iframe>
+          </div>
+          <div v-else class="pa-6 text-center subtitle-1">
+            No trailer available for this title.
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -28,6 +59,9 @@ export default {
   data() {
     return {
       upcomingItems: [],
+      dialog: false,
+      trailerLoading: false,
+      youtubeKey: null,
     };
   },
   components: {
@@ -60,6 +94,29 @@ export default {
         console.log(error);
       }
     },
+    async openTrailer(item) {
+      this.dialog = true;
+      this.trailerLoading = true;
+      this.youtubeKey = null;
+
+      try {
+        const response = await this.$http.get(`/${item.media_type}/${item.id}/videos`);
+        const videos = response.data.results;
+        const trailer = videos.find(v => v.type === "Trailer" && v.site === "YouTube") || videos.find(v => v.site === "YouTube");
+        
+        if (trailer) {
+          this.youtubeKey = trailer.key;
+        }
+      } catch (error) {
+        console.error("Failed to fetch trailer", error);
+      } finally {
+        this.trailerLoading = false;
+      }
+    },
+    closeTrailer() {
+      this.dialog = false;
+      this.youtubeKey = null; // reset iframe to stop video
+    }
   },
 };
 </script>

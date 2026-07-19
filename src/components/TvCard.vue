@@ -14,19 +14,11 @@
       </v-card-title>
       <v-card-text class="content-area">
         <div class="ratings-row">
-          <v-rating
-            :value="show.vote_average / 2"
-            color="amber"
-            dense
-            half-increments
-            readonly
-            size="14"
-          >
-          </v-rating>
-
-          <div class="grey--text rating-text">
-            {{ Math.round(show.vote_average * 10) }}% |
-            {{ show.first_air_date }}
+          <div class="d-flex align-center">
+            <span class="imdb-badge mr-2">IMDb</span>
+            <span class="grey--text font-weight-bold">{{
+              show.vote_average ? show.vote_average.toFixed(1) : "N/A"
+            }}</span>
           </div>
         </div>
         <div class="genre-area subtitle-2">
@@ -138,6 +130,16 @@ export default {
 .rating-text {
   white-space: nowrap;
   margin-left: 8px;
+}
+
+.imdb-badge {
+  background-color: #f5c518;
+  color: #000000;
+  font-weight: 900;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  line-height: 1;
 }
 
 .genre-area {
