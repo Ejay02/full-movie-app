@@ -17,11 +17,11 @@
     <v-container fluid>
       <v-row>
         <v-col
-          cols="12"
-          sm="12"
-          md="6"
-          lg="3"
-          xl="3"
+            cols="6"
+          sm="4"
+          md="3"
+          lg="1"
+          xl="1"
           v-for="show in shows"
           :key="show.id"
         >
