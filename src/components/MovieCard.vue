@@ -5,14 +5,19 @@
       :elevation="hover ? 18 : 0"
       :class="{ 'media-card--hover': hover }"
     >
-      <router-link :to="`/movie/${movie.id}`">
-        <v-img :src="posterPath" alt="" class="poster-image"></v-img>
-      </router-link>
+      <MediaPosterPreview
+        :hover="hover"
+        media-type="movie"
+        :media-id="movie.id"
+        :poster-src="posterPath"
+        :to="`/movie/${movie.id}`"
+        image-class="poster-image"
+      />
       <v-card-title class="subtitle-2 card-title pa-4">
         <div class="title-text">{{ movie.title }}</div>
-        <v-btn icon class="bookmark-btn" @click.stop="toggleWatchlist">
-          <v-icon :color="isInWatchlist ? 'amber' : ''">
-            {{ isInWatchlist ? "mdi-bookmark" : "mdi-bookmark-outline" }}
+        <v-btn icon class="watchlist-btn" @click.stop="toggleMyView">
+          <v-icon :color="isInMyView ? 'light-green accent-3' : ''">
+            {{ isInMyView ? "mdi-check" : "mdi-plus" }}
           </v-icon>
         </v-btn>
       </v-card-title>
@@ -41,7 +46,12 @@
 </template>
 
 <script>
+import MediaPosterPreview from "./MediaPosterPreview.vue";
+
 export default {
+  components: {
+    MediaPosterPreview,
+  },
   props: {
     movie: {
       required: true,
@@ -50,14 +60,12 @@ export default {
       required: true,
     },
   },
-  data() {
-    return {
-      isInWatchlist: false,
-    };
-  },
   computed: {
     posterPath() {
       return "https://image.tmdb.org/t/p/w500/" + this.movie.poster_path;
+    },
+    isInMyView() {
+      return !!this.$store.getters.myViewItemByKey("movie", this.movie.id);
     },
   },
   methods: {
@@ -72,11 +80,22 @@ export default {
         }
       }
     },
-    toggleWatchlist() {
-      this.isInWatchlist = !this.isInWatchlist;
-      this.$emit("watchlist-toggle", {
-        movieId: this.movie.id,
-        action: this.isInWatchlist ? "add" : "remove",
+    toggleMyView() {
+      const itemId = `movie-${this.movie.id}`;
+
+      if (this.isInMyView) {
+        this.$store.dispatch("removeFromMyView", itemId);
+        return;
+      }
+
+      this.$store.dispatch("saveToMyView", {
+        mediaType: "movie",
+        mediaId: this.movie.id,
+        title: this.movie.title,
+        posterPath: this.movie.poster_path,
+        backdropPath: this.movie.backdrop_path,
+        voteAverage: this.movie.vote_average,
+        genreIds: this.movie.genre_ids,
       });
     },
   },
@@ -160,7 +179,7 @@ export default {
   word-break: break-word;
 }
 
-.bookmark-btn {
+.watchlist-btn {
   flex-shrink: 0;
   margin-left: 4px;
   color: rgba(255, 255, 255, 0.86);

@@ -19,6 +19,8 @@
   </v-container>
 
   <div class="home-page px-2 px-sm-4" v-else>
+    <ContinueWatchingSection />
+
     <div class="section-header">
       <div>
         <p class="eyebrow mb-1">Tonight's Picks</p>
@@ -60,12 +62,14 @@
 import MovieCard from "../components/MovieCard.vue";
 import TvCard from "../components/TvCard.vue";
 import UpcomingMovies from "@/components/UpcomingMovies.vue";
+import ContinueWatchingSection from "@/components/ContinueWatchingSection.vue";
 
 export default {
   components: {
     MovieCard,
     TvCard,
     UpcomingMovies,
+    ContinueWatchingSection,
   },
   data: function () {
     return {

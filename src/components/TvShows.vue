@@ -19,6 +19,8 @@
   </v-container>
 
   <div class="mx-3" v-else>
+    <ContinueWatchingSection />
+
     <h2 class="mb-4 mt-4 grey--text text-center">Popular Shows</h2>
 
     <v-alert v-if="!shows.length" outlined type="info" class="mt-6">
@@ -45,10 +47,12 @@
 
 <script>
 import TvCard from "../components/TvCard";
+import ContinueWatchingSection from "../components/ContinueWatchingSection.vue";
 
 export default {
   components: {
     TvCard,
+    ContinueWatchingSection,
   },
   data: function () {
     return {

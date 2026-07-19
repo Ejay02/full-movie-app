@@ -5,14 +5,19 @@
       :elevation="hover ? 18 : 0"
       :class="{ 'media-card--hover': hover }"
     >
-      <router-link :to="`/show/${show.id}`">
-        <v-img :src="posterPath" alt="" class="poster-image"></v-img>
-      </router-link>
+      <MediaPosterPreview
+        :hover="hover"
+        media-type="tv"
+        :media-id="show.id"
+        :poster-src="posterPath"
+        :to="`/show/${show.id}`"
+        image-class="poster-image"
+      />
       <v-card-title class="subtitle-2 card-title pa-4">
         <div class="title-text">{{ show.name }}</div>
-        <v-btn icon class="bookmark-btn" @click.stop="toggleWatchlist">
-          <v-icon :color="isInWatchlist ? 'amber' : ''">
-            {{ isInWatchlist ? "mdi-bookmark" : "mdi-bookmark-outline" }}
+        <v-btn icon class="watchlist-btn" @click.stop="toggleMyView">
+          <v-icon :color="isInMyView ? 'light-green accent-3' : ''">
+            {{ isInMyView ? "mdi-check" : "mdi-plus" }}
           </v-icon>
         </v-btn>
       </v-card-title>
@@ -40,7 +45,12 @@
 </template>
 
 <script>
+import MediaPosterPreview from "./MediaPosterPreview.vue";
+
 export default {
+  components: {
+    MediaPosterPreview,
+  },
   props: {
     show: {
       required: true,
@@ -49,14 +59,12 @@ export default {
       required: true,
     },
   },
-  data() {
-    return {
-      isInWatchlist: false,
-    };
-  },
   computed: {
     posterPath() {
       return "https://image.tmdb.org/t/p/w500/" + this.show.poster_path;
+    },
+    isInMyView() {
+      return !!this.$store.getters.myViewItemByKey("tv", this.show.id);
     },
   },
   methods: {
@@ -71,11 +79,22 @@ export default {
         }
       }
     },
-    toggleWatchlist() {
-      this.isInWatchlist = !this.isInWatchlist;
-      this.$emit("watchlist-toggle", {
-        showId: this.show.id,
-        action: this.isInWatchlist ? "add" : "remove",
+    toggleMyView() {
+      const itemId = `tv-${this.show.id}`;
+
+      if (this.isInMyView) {
+        this.$store.dispatch("removeFromMyView", itemId);
+        return;
+      }
+
+      this.$store.dispatch("saveToMyView", {
+        mediaType: "tv",
+        mediaId: this.show.id,
+        title: this.show.name,
+        posterPath: this.show.poster_path,
+        backdropPath: this.show.backdrop_path,
+        voteAverage: this.show.vote_average,
+        genreIds: this.show.genre_ids,
       });
     },
   },
@@ -157,7 +176,7 @@ export default {
   word-break: break-word;
 }
 
-.bookmark-btn {
+.watchlist-btn {
   flex-shrink: 0;
   margin-left: 4px;
   color: rgba(255, 255, 255, 0.86);
