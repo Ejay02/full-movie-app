@@ -40,22 +40,22 @@
         dense
         outlined
         hide-details
-        class="sort-filter-select"
+        class="sort-filter-select ml-4 mt-2 mt-sm-0"
         @change="fetchGenreShows"
       ></v-select>
     </div>
 
-    <!-- Loading Genre State -->
-    <div v-if="loadingGenre" class="d-flex justify-center align-center py-12">
-      <v-progress-circular indeterminate color="error" size="40"></v-progress-circular>
+    <!-- Loading Genre State (With ample spacing below filter controls) -->
+    <div v-if="loadingGenre" class="d-flex justify-center align-center py-16 mt-12">
+      <v-progress-circular indeterminate color="error" size="50"></v-progress-circular>
     </div>
 
     <!-- Sectioned View (When selectedGenre is 'all') -->
     <div v-else-if="selectedGenre === 'all'">
       <!-- Section 1: Trending -->
       <div class="hub-section mb-8">
-        <div class="section-header mb-3">
-          <p class="eyebrow red--text mb-1 font-weight-bold">Hot This Week</p>
+        <div class="section-header mb-3 d-flex flex-column align-start">
+          <span class="eyebrow red--text font-weight-bold text-uppercase tracking-wider text-caption mb-1">Hot This Week</span>
           <h3 class="white--text text-h6 font-weight-bold">Trending Now</h3>
         </div>
         <v-slide-group class="content-slider pa-0" show-arrows>
@@ -69,8 +69,8 @@
 
       <!-- Section 2: Popular -->
       <div class="hub-section mb-8">
-        <div class="section-header mb-3">
-          <p class="eyebrow mb-1">Binge Worthy</p>
+        <div class="section-header mb-3 d-flex flex-column align-start">
+          <span class="eyebrow grey--text text--lighten-1 font-weight-bold text-uppercase tracking-wider text-caption mb-1">Binge Worthy</span>
           <h3 class="white--text text-h6 font-weight-bold">Popular Shows</h3>
         </div>
         <v-slide-group class="content-slider pa-0" show-arrows>
@@ -84,8 +84,8 @@
 
       <!-- Section 3: Top Rated -->
       <div class="hub-section mb-8">
-        <div class="section-header mb-3">
-          <p class="eyebrow mb-1">Top Rated In Broadcast</p>
+        <div class="section-header mb-3 d-flex flex-column align-start">
+          <span class="eyebrow grey--text text--lighten-1 font-weight-bold text-uppercase tracking-wider text-caption mb-1">Top Rated In Broadcast</span>
           <h3 class="white--text text-h6 font-weight-bold">Top Rated</h3>
         </div>
         <v-slide-group class="content-slider pa-0" show-arrows>
@@ -98,8 +98,8 @@
       </div>
     </div>
 
-    <!-- Grid View (When a specific genre is selected) -->
-    <div v-else>
+    <!-- Grid View (When a specific genre is selected, with top margin spacing) -->
+    <div v-else class="mt-6">
       <v-alert v-if="!genreShows.length" outlined type="info" class="mt-6">
         No TV shows found under this category.
       </v-alert>
@@ -146,9 +146,12 @@ export default {
       errorMessage: "",
 
       sortOptions: [
-        { text: "Popularity", value: "popularity.desc" },
-        { text: "Rating", value: "vote_average.desc" },
-        { text: "Air Date", value: "first_air_date.desc" }
+        { text: "Popularity (High to Low)", value: "popularity.desc" },
+        { text: "Popularity (Low to High)", value: "popularity.asc" },
+        { text: "Rating (High to Low)", value: "vote_average.desc" },
+        { text: "Rating (Low to High)", value: "vote_average.asc" },
+        { text: "Release Year (Newest)", value: "first_air_date.desc" },
+        { text: "Release Year (Oldest)", value: "first_air_date.asc" }
       ]
     };
   },
@@ -240,11 +243,11 @@ export default {
 }
 
 .genre-filter-select {
-  width: 180px;
+  width: 220px;
 }
 
 .sort-filter-select {
-  width: 160px;
+  width: 240px;
 }
 
 .genre-filter-select >>> .v-input__control,
@@ -270,10 +273,10 @@ export default {
     width: 150px;
   }
   .genre-filter-select {
-    width: 140px;
+    width: 150px;
   }
   .sort-filter-select {
-    width: 130px;
+    width: 160px;
   }
 }
 </style>

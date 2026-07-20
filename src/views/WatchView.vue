@@ -15,7 +15,7 @@
 
     <!-- Player Screen -->
     <div v-else class="theater-player-container">
-      <!-- Floating Top Control Bar (Fades out or stays clean) -->
+      <!-- Floating Top Control Bar -->
       <div class="theater-control-bar pa-4 d-flex align-center justify-space-between flex-wrap gap-2">
         <div class="d-flex align-center min-w-0">
           <v-btn icon dark large class="back-btn mr-3" @click="goBack">
@@ -107,6 +107,32 @@
               <v-icon>mdi-fast-forward-10</v-icon>
             </v-btn>
           </div>
+
+          <!-- Netflix-Style Autoplay Countdown Card overlay -->
+          <v-fade-transition>
+            <div v-if="showNextEpisodeCountdown" class="netflix-autoplay-overlay pa-4">
+              <div class="d-flex align-center justify-space-between mb-2">
+                <span class="white--text font-weight-bold body-2">Next Episode in {{ countdownSeconds }}s</span>
+                <v-btn icon x-small dark @click="cancelAutoplay" title="Cancel autoplay">
+                  <v-icon x-small>mdi-close</v-icon>
+                </v-btn>
+              </div>
+              <div class="next-ep-details d-flex align-center mb-3">
+                <v-img :src="nextEpisodeStill" width="100" height="56" class="rounded mr-3" cover></v-img>
+                <div class="min-w-0 flex-grow-1">
+                  <div class="white--text text-caption font-weight-bold text-truncate">
+                    S{{ selectedSeason }}:E{{ selectedEpisode + 1 }}
+                  </div>
+                  <div class="grey--text text-caption text-truncate">
+                    {{ nextEpisodeName }}
+                  </div>
+                </div>
+              </div>
+              <v-btn color="error" block small class="text-none font-weight-bold" @click="triggerNextEpisodeNow">
+                Play Now
+              </v-btn>
+            </div>
+          </v-fade-transition>
         </div>
 
         <!-- Iframe streaming player -->
@@ -155,6 +181,12 @@ export default {
       selectedEpisode: 1,
       episodes: [],
       
+      // Autoplay Countdown
+      showNextEpisodeCountdown: false,
+      countdownSeconds: 15,
+      countdownInterval: null,
+      autoplayCancelled: false,
+
       // Streaming details
       activeProviderId: "vidlink",
       providers: [
@@ -246,6 +278,19 @@ export default {
       const lastEpNum = this.episodes[this.episodes.length - 1].episode_number;
       return this.selectedEpisode < lastEpNum;
     },
+    nextEpisode() {
+      if (this.mediaType !== "tv" || !this.episodes.length) return null;
+      return this.episodes.find(e => e.episode_number === this.selectedEpisode + 1);
+    },
+    nextEpisodeName() {
+      return this.nextEpisode ? this.nextEpisode.name : "Next Episode";
+    },
+    nextEpisodeStill() {
+      if (this.nextEpisode && this.nextEpisode.still_path) {
+        return `https://image.tmdb.org/t/p/w300/${this.nextEpisode.still_path}`;
+      }
+      return this.backdropPath;
+    },
     continueWatchingEntry() {
       return this.$store.getters.continueWatchingItemByKey(
         this.mediaType,
@@ -265,6 +310,7 @@ export default {
   },
   beforeDestroy() {
     this.clearBufferingCheck();
+    this.clearCountdown();
     window.removeEventListener("keydown", this.handleKeyDown);
   },
   methods: {
@@ -272,6 +318,9 @@ export default {
       this.loading = true;
       this.errorMessage = "";
       this.hasRestoredPosition = false;
+      this.autoplayCancelled = false;
+      this.showNextEpisodeCountdown = false;
+      this.clearCountdown();
 
       // Default server
       this.activeProviderId = this.hasPersonalSource ? "personal" : "vidlink";
@@ -328,6 +377,9 @@ export default {
     },
     playEpisode(episodeNum) {
       this.selectedEpisode = episodeNum;
+      this.autoplayCancelled = false;
+      this.showNextEpisodeCountdown = false;
+      this.clearCountdown();
       this.recordContinueWatching({ force: true });
       this.startBufferingCheck();
       this.updateUrlParams();
@@ -368,6 +420,14 @@ export default {
       const player = this.$refs.player;
       if (!player) return;
 
+      // Autoplay next episode triggers when 15 seconds or less are remaining
+      const timeLeft = player.duration - player.currentTime;
+      if (this.mediaType === "tv" && this.hasNextEpisode && timeLeft <= 15 && timeLeft > 0) {
+        if (!this.showNextEpisodeCountdown && !this.autoplayCancelled) {
+          this.startAutoplayCountdown();
+        }
+      }
+
       const currentSecond = Math.floor(player.currentTime || 0);
       if (currentSecond > 0 && currentSecond - this.lastTrackedSecond < 15) {
         return;
@@ -381,6 +441,9 @@ export default {
     },
     handlePlaybackEnded() {
       this.$store.dispatch("removeContinueWatching", `${this.mediaType}-${this.mediaId}`);
+      if (this.mediaType === "tv" && this.hasNextEpisode && !this.autoplayCancelled) {
+        this.triggerNextEpisodeNow();
+      }
     },
     recordContinueWatching({ currentTime = 0, duration = 0, force = false } = {}) {
       const isPublicEmbed = this.activeProviderId !== "personal";
@@ -418,11 +481,40 @@ export default {
       });
     },
     
+    // Netflix Autoplay Countdown Methods
+    startAutoplayCountdown() {
+      this.showNextEpisodeCountdown = true;
+      this.countdownSeconds = 15;
+      this.clearCountdown();
+      this.countdownInterval = setInterval(() => {
+        this.countdownSeconds--;
+        if (this.countdownSeconds <= 0) {
+          this.clearCountdown();
+          this.triggerNextEpisodeNow();
+        }
+      }, 1000);
+    },
+    clearCountdown() {
+      if (this.countdownInterval) {
+        clearInterval(this.countdownInterval);
+        this.countdownInterval = null;
+      }
+    },
+    cancelAutoplay() {
+      this.clearCountdown();
+      this.showNextEpisodeCountdown = false;
+      this.autoplayCancelled = true;
+    },
+    triggerNextEpisodeNow() {
+      this.clearCountdown();
+      this.showNextEpisodeCountdown = false;
+      this.playNextEpisode();
+    },
+
     // Server Buffering Timeout Logic
     startBufferingCheck() {
       this.clearBufferingCheck();
       
-      // Set a 20-second timeout. If the server does not load/start within 20 seconds, we auto-load the next provider.
       if (this.activeProviderId !== "personal") {
         this.bufferingTimeout = setTimeout(() => {
           this.autoSwitchProvider();
@@ -437,13 +529,11 @@ export default {
     },
     handleVideoWaiting() {
       this.clearBufferingCheck();
-      // Native player stalled/waiting - auto switch to fallback after 12 seconds
       this.bufferingTimeout = setTimeout(() => {
         this.autoSwitchProvider();
       }, 12000);
     },
     handleIframeLoaded() {
-      // Clear the loading/buffering timeout once the iframe document loads
       this.clearBufferingCheck();
     },
     autoSwitchProvider() {
@@ -463,7 +553,6 @@ export default {
       }
     },
     handleKeyDown(e) {
-      // Ignore key events inside inputs
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
         return;
       }
@@ -625,6 +714,21 @@ export default {
   background: rgba(8, 10, 18, 0.8) !important;
 }
 
+/* Netflix-Style Autoplay Countdown Overlay Card */
+.netflix-autoplay-overlay {
+  position: absolute;
+  bottom: 80px;
+  right: 24px;
+  z-index: 100;
+  width: 290px;
+  background: rgba(14, 17, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+}
+
 .theater-tip {
   background: rgba(0, 0, 0, 0.85);
   position: absolute;
@@ -649,5 +753,14 @@ export default {
 
 .max-w-250 {
   max-width: 250px;
+}
+
+@media (max-width: 600px) {
+  .netflix-autoplay-overlay {
+    right: 12px;
+    left: 12px;
+    bottom: 70px;
+    width: auto;
+  }
 }
 </style>
