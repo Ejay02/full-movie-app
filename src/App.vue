@@ -1,11 +1,11 @@
 <template>
   <v-app class="app-shell">
-    <nav-bar />
+    <nav-bar v-if="!$route.meta.hideNav" />
 
     <v-main class="shell-main">
       <router-view />
     </v-main>
-    <foo-ter />
+    <foo-ter v-if="!$route.meta.hideFooter" />
   </v-app>
 </template>
 

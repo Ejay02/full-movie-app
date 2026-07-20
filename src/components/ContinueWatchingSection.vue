@@ -21,6 +21,7 @@
         <v-card class="continue-card mr-4 my-2" flat>
           <router-link :to="resumeRoute(item)" class="poster-link">
             <v-img :src="posterPath(item)" class="continue-poster">
+              <span class="quality-badge">{{ getQualityTag(item) }}</span>
               <div class="poster-overlay">
                 <div class="play-chip">
                   <v-icon left small color="white">mdi-play-circle</v-icon>
@@ -139,6 +140,12 @@ export default {
     clearItems() {
       this.$store.dispatch("clearContinueWatching");
     },
+    getQualityTag(item) {
+      if (item.mediaType === "tv") {
+        return "FHD";
+      }
+      return parseInt(item.mediaId) % 3 === 0 ? "4K" : "FHD";
+    },
     formatWatchedAt(timestamp) {
       const elapsed = Date.now() - timestamp;
       const minute = 60 * 1000;
@@ -224,6 +231,22 @@ export default {
   color: #ffffff;
   font-size: 0.78rem;
   backdrop-filter: blur(8px);
+}
+
+.quality-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  background: linear-gradient(135deg, #ff5252, #ff1744);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .continue-content {

@@ -3,6 +3,9 @@
     <div class="poster-frame">
       <v-img :src="posterSrc" alt="" :class="imageClass"></v-img>
 
+      <!-- Quality Badge tag on top right -->
+      <span v-if="quality" class="quality-badge">{{ quality }}</span>
+
       <div v-if="hover" class="preview-layer">
         <iframe
           v-if="trailerKey"
@@ -58,6 +61,10 @@ export default {
       type: String,
       default: "",
     },
+    quality: {
+      type: String,
+      default: "",
+    },
   },
   data() {
     return {
@@ -72,7 +79,7 @@ export default {
         return "";
       }
 
-      return `https://www.youtube.com/embed/${this.trailerKey}?autoplay=1&mute=1&controls=0&loop=1&playlist=${this.trailerKey}&modestbranding=1&rel=0`;
+      return `https://www.youtube.com/embed/${this.trailerKey}?autoplay=1&mute=0&controls=0&loop=1&playlist=${this.trailerKey}&modestbranding=1&rel=0`;
     },
   },
   watch: {
@@ -157,5 +164,21 @@ export default {
   color: #ffffff;
   font-size: 0.78rem;
   backdrop-filter: blur(8px);
+}
+
+.quality-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  background: linear-gradient(135deg, #ff5252, #ff1744);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 </style>

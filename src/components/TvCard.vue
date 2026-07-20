@@ -12,6 +12,7 @@
         :poster-src="posterPath"
         :to="`/show/${show.id}`"
         image-class="poster-image"
+        :quality="qualityTag"
       />
       <v-card-title class="subtitle-2 card-title pa-4">
         <div class="title-text">{{ show.name }}</div>
@@ -65,6 +66,23 @@ export default {
     },
     isInMyView() {
       return !!this.$store.getters.myViewItemByKey("tv", this.show.id);
+    },
+    qualityTag() {
+      if (!this.show.first_air_date) return "FHD";
+      try {
+        const firstAirDate = new Date(this.show.first_air_date);
+        const today = new Date();
+        const diffTime = Math.abs(today - firstAirDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 90) {
+          return "HD";
+        } else {
+          return parseInt(this.show.id) % 4 === 0 ? "4K" : "FHD";
+        }
+      } catch (e) {
+        return "FHD";
+      }
     },
   },
   methods: {

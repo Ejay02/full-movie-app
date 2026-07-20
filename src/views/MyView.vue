@@ -33,6 +33,7 @@
           <v-card class="saved-card" flat>
             <router-link :to="detailRoute(item)" class="saved-link">
               <v-img :src="posterPath(item)" class="saved-poster">
+                <span class="quality-badge">{{ getQualityTag(item) }}</span>
                 <v-btn
                   icon
                   small
@@ -104,6 +105,12 @@ export default {
     },
     removeItem(itemId) {
       this.$store.dispatch("removeFromMyView", itemId);
+    },
+    getQualityTag(item) {
+      if (item.mediaType === "tv") {
+        return "FHD";
+      }
+      return parseInt(item.mediaId) % 3 === 0 ? "4K" : "FHD";
     },
   },
 };
@@ -185,6 +192,22 @@ export default {
   z-index: 3;
   background: rgba(7, 10, 16, 0.58);
   backdrop-filter: blur(10px);
+}
+
+.quality-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 5;
+  background: linear-gradient(135deg, #ff5252, #ff1744);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .saved-overlay {

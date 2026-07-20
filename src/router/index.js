@@ -36,6 +36,12 @@ const routes = [
     component: () => import("../views/SearchView.vue"),
   },
   {
+    path: "/watch/:mediaType/:id",
+    name: "watch",
+    component: () => import("../views/WatchView.vue"),
+    meta: { hideNav: true, hideFooter: true },
+  },
+  {
     path: "/actor/:id",
     name: "actor",
     component: () => import("../components/ActorDetail.vue"),
