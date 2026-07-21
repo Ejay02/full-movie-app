@@ -6,3 +6,9 @@
   from = "/api/tmdb/*"
   to = "/.netlify/functions/tmdb/:splat"
   status = 200
+
+# SPA fallback — required for Vue Router history mode
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
