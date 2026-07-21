@@ -6,9 +6,13 @@
         <v-btn icon dark class="mr-3" @click="$router.push('/')">
           <v-icon>mdi-arrow-left</v-icon>
         </v-btn>
-        <div class="dstv-logo-badge-header mr-3">
-          <span class="dstv-text-header">DStv</span>
-        </div>
+        <v-img
+          src="https://cdn-1.webcatalog.io/catalog/dstv-now/dstv-now-icon-filled-256.png"
+          max-width="36"
+          max-height="36"
+          contain
+          class="rounded-lg mr-3"
+        ></v-img>
         <div>
           <h1 class="white--text text-h6 font-weight-bold mb-0">DStv Stream Portal</h1>
           <span class="grey--text text-caption">Official DStv Streaming Web App (dstv.stream)</span>

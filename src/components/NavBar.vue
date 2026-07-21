@@ -43,23 +43,19 @@
           TV Shows
         </v-btn>
         <v-btn
-          text
+          icon
           class="ml-2 nav-link dstv-nav-btn"
           :class="{ 'nav-link--active': isActive('/dstv') }"
           to="/dstv"
+          title="DStv Stream"
         >
-          <svg width="26" height="18" viewBox="0 0 80 30" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-1">
-            <rect width="80" height="30" rx="6" fill="url(#dstv-nav-grad)"/>
-            <text x="6" y="21" fill="#FFFFFF" font-family="Montserrat, Arial, sans-serif" font-weight="900" font-size="18" letter-spacing="-0.5">DStv</text>
-            <polygon points="56,8 56,22 68,15" fill="#00E5FF"/>
-            <defs>
-              <linearGradient id="dstv-nav-grad" x1="0" y1="0" x2="80" y2="30" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#00A3E0"/>
-                <stop offset="1" stop-color="#004182"/>
-              </linearGradient>
-            </defs>
-          </svg>
-          DStv Stream
+          <v-img
+            src="https://cdn-1.webcatalog.io/catalog/dstv-now/dstv-now-icon-filled-256.png"
+            max-width="32"
+            max-height="32"
+            contain
+            class="rounded-lg"
+          ></v-img>
         </v-btn>
         <v-btn
           text
