@@ -27,7 +27,7 @@
         <h2 class="section-title mb-2">Popular Movies</h2>
       </div>
     </div>
-    <v-alert v-if="!popularMovies.length" outlined type="info" class="mt-6">
+    <v-alert v-if="!popularMovies || !popularMovies.length" outlined type="info" class="mt-6">
       No popular movies are available right now.
     </v-alert>
     <v-slide-group v-else class="content-slider pa-0 mb-8" show-arrows>
@@ -44,7 +44,7 @@
         <h2 class="section-title mb-2">Popular Shows</h2>
       </div>
     </div>
-    <v-alert v-if="!popularShows.length" outlined type="info" class="mt-6">
+    <v-alert v-if="!popularShows || !popularShows.length" outlined type="info" class="mt-6">
       No popular shows are available right now.
     </v-alert>
     <v-slide-group v-else class="content-slider pa-0 mb-8" show-arrows>
@@ -108,22 +108,22 @@ export default {
       const response = await this.$http.get(
         "/trending/movie/day?language=en-US",
       );
-      this.popularMovies = response.data.results;
+      this.popularMovies = response.data?.results || [];
     },
     async fetchPopularShows() {
       const response = await this.$http.get("/trending/tv/day?language=en-US");
-      this.popularShows = response.data.results;
+      this.popularShows = response.data?.results || [];
     },
     async fetchMovieGenres() {
       const response = await this.$http.get("/genre/movie/list");
-      this.genres = response.data.genres;
+      this.genres = response.data?.genres || [];
     },
     async fetchTvGenres() {
       const response = await this.$http.get("/genre/tv/list");
-      const tvGenres = response.data?.genres ?? [];
-      const existingIds = new Set((this.genres ?? []).map((genre) => genre.id));
+      const tvGenres = response.data?.genres || [];
+      const existingIds = new Set((this.genres || []).map((genre) => genre.id));
       const newGenres = tvGenres.filter((genre) => !existingIds.has(genre.id));
-      this.genres = [...(this.genres ?? []), ...newGenres];
+      this.genres = [...(this.genres || []), ...newGenres];
     },
   },
 };

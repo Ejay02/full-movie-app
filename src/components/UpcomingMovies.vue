@@ -94,10 +94,10 @@ export default {
           this.$http.get("/tv/on_the_air"),
         ]);
 
-        const movies = moviesResponse.data.results
+        const movies = (moviesResponse.data?.results || [])
           .slice(1, 4)
           .map((m) => ({ ...m, media_type: "movie" }));
-        const shows = showsResponse.data.results
+        const shows = (showsResponse.data?.results || [])
           .slice(0, 3)
           .map((s) => ({ ...s, media_type: "tv" }));
 
@@ -122,7 +122,7 @@ export default {
         const response = await this.$http.get(
           `/${item.media_type}/${item.id}/videos`,
         );
-        const videos = response.data.results;
+        const videos = response.data?.results || [];
         const trailer =
           videos.find((v) => v.type === "Trailer" && v.site === "YouTube") ||
           videos.find((v) => v.site === "YouTube");

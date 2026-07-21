@@ -103,7 +103,7 @@ export default {
     },
     async fetchActors(page) {
       const response = await this.$http.get("/person/popular?page=" + page);
-      this.actors = response.data.results;
+      this.actors = response.data?.results || [];
       // this.actors.push(...response.data.results);
     },
     scroll() {
