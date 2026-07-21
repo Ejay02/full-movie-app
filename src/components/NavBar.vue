@@ -48,17 +48,18 @@
           :class="{ 'nav-link--active': isActive('/dstv') }"
           to="/dstv"
         >
-          <svg width="26" height="16" viewBox="0 0 70 30" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-1">
-            <rect width="70" height="30" rx="6" fill="url(#dstv-nav-grad)"/>
-            <text x="7" y="21" fill="#FFFFFF" font-family="Montserrat, Arial, sans-serif" font-weight="900" font-size="19" letter-spacing="-0.5">DStv</text>
+          <svg width="26" height="18" viewBox="0 0 80 30" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-1">
+            <rect width="80" height="30" rx="6" fill="url(#dstv-nav-grad)"/>
+            <text x="6" y="21" fill="#FFFFFF" font-family="Montserrat, Arial, sans-serif" font-weight="900" font-size="18" letter-spacing="-0.5">DStv</text>
+            <polygon points="56,8 56,22 68,15" fill="#00E5FF"/>
             <defs>
-              <linearGradient id="dstv-nav-grad" x1="0" y1="0" x2="70" y2="30" gradientUnits="userSpaceOnUse">
+              <linearGradient id="dstv-nav-grad" x1="0" y1="0" x2="80" y2="30" gradientUnits="userSpaceOnUse">
                 <stop stop-color="#00A3E0"/>
-                <stop offset="1" stop-color="#0051A8"/>
+                <stop offset="1" stop-color="#004182"/>
               </linearGradient>
             </defs>
           </svg>
-          DStv
+          DStv Stream
         </v-btn>
         <v-btn
           text
