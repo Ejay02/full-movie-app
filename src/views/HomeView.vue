@@ -89,9 +89,11 @@ export default {
       this.errorMessage = "";
 
       try {
+        // Genres must be sequential — fetchTvGenres depends on this.genres being populated first
+        await this.fetchMovieGenres();
+        await this.fetchTvGenres();
+        // Movies and shows are independent — run in parallel
         await Promise.all([
-          this.fetchMovieGenres(),
-          this.fetchTvGenres(),
           this.fetchPopularMovies(),
           this.fetchPopularShows(),
         ]);
@@ -118,11 +120,10 @@ export default {
     },
     async fetchTvGenres() {
       const response = await this.$http.get("/genre/tv/list");
-      const existingIds = new Set(this.genres.map((genre) => genre.id));
-      const tvGenres = response.data.genres.filter(
-        (genre) => !existingIds.has(genre.id),
-      );
-      this.genres = [...this.genres, ...tvGenres];
+      const tvGenres = response.data?.genres ?? [];
+      const existingIds = new Set((this.genres ?? []).map((genre) => genre.id));
+      const newGenres = tvGenres.filter((genre) => !existingIds.has(genre.id));
+      this.genres = [...(this.genres ?? []), ...newGenres];
     },
   },
 };
