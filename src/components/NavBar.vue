@@ -44,6 +44,24 @@
         </v-btn>
         <v-btn
           text
+          class="ml-2 nav-link dstv-nav-btn"
+          :class="{ 'nav-link--active': isActive('/dstv') }"
+          to="/dstv"
+        >
+          <svg width="26" height="16" viewBox="0 0 70 30" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-1">
+            <rect width="70" height="30" rx="6" fill="url(#dstv-nav-grad)"/>
+            <text x="7" y="21" fill="#FFFFFF" font-family="Montserrat, Arial, sans-serif" font-weight="900" font-size="19" letter-spacing="-0.5">DStv</text>
+            <defs>
+              <linearGradient id="dstv-nav-grad" x1="0" y1="0" x2="70" y2="30" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#00A3E0"/>
+                <stop offset="1" stop-color="#0051A8"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          DStv
+        </v-btn>
+        <v-btn
+          text
           class="ml-2 nav-link"
           :class="{ 'nav-link--active': isActive('/my-view') }"
           to="/my-view"

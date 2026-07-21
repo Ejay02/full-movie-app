@@ -42,6 +42,11 @@ const routes = [
     meta: { hideNav: true, hideFooter: true },
   },
   {
+    path: "/dstv",
+    name: "dstv",
+    component: () => import("../views/DstvView.vue"),
+  },
+  {
     path: "/actor/:id",
     name: "actor",
     component: () => import("../components/ActorDetail.vue"),

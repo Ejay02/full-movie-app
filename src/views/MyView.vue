@@ -7,6 +7,27 @@
       <h2 class="page-title mb-2">My View</h2>
     </div>
 
+    <!-- DStv Stream Launcher Card -->
+    <v-card class="dstv-banner-card pa-5 mt-6 mb-4" flat>
+      <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+        <div class="d-flex align-center">
+          <div class="dstv-badge-wrapper mr-4">
+            <span class="dstv-badge-text">DStv</span>
+          </div>
+          <div>
+            <h3 class="white--text text-h6 font-weight-bold mb-1">DStv Stream Portal</h3>
+            <p class="grey--text text--lighten-1 body-2 mb-0">
+              Sign in with your DStv subscription to watch live TV channels & Catch Up inside Ej's Movie.
+            </p>
+          </div>
+        </div>
+        <v-btn color="#00A3E0" dark large rounded class="px-6 text-none font-weight-bold dstv-glow-btn" to="/dstv">
+          <v-icon left>mdi-television-play</v-icon>
+          Launch DStv Stream
+        </v-btn>
+      </div>
+    </v-card>
+
     <div v-if="myViewItems.length || showEmptyState" class="saved-section mt-4">
       <div v-if="showEmptyState" class="empty-state-shell">
         <div class="empty-state">
@@ -281,5 +302,35 @@ export default {
   margin-top: 4px;
   color: rgba(255, 255, 255, 0.88);
   font-weight: 600;
+}
+
+.dstv-banner-card {
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, rgba(9, 13, 25, 0.95), rgba(14, 22, 40, 0.98)) !important;
+  border: 1px solid rgba(0, 163, 224, 0.25) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dstv-badge-wrapper {
+  background: linear-gradient(135deg, #00A3E0, #0051A8);
+  padding: 6px 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 163, 224, 0.4);
+}
+
+.dstv-badge-text {
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 1.25rem;
+  letter-spacing: -0.5px;
+}
+
+.dstv-glow-btn {
+  box-shadow: 0 0 16px rgba(0, 163, 224, 0.4) !important;
+  transition: transform 0.2s ease !important;
+}
+
+.dstv-glow-btn:hover {
+  transform: scale(1.04) !important;
 }
 </style>
