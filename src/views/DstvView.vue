@@ -1,70 +1,60 @@
 <template>
-  <div class="dstv-page">
-    <!-- Header -->
-    <div class="dstv-header pa-3 px-4 d-flex align-center justify-space-between">
-      <div class="d-flex align-center">
-        <v-btn icon dark class="mr-3" @click="$router.push('/')">
-          <v-icon>mdi-arrow-left</v-icon>
-        </v-btn>
+  <div class="dstv-launcher-page">
+    <div class="dstv-hero d-flex flex-column align-center justify-center text-center px-4">
+
+      <!-- Logo -->
+      <div class="dstv-logo-ring mb-6">
         <v-img
           src="https://cdn-1.webcatalog.io/catalog/dstv-now/dstv-now-icon-filled-256.png"
-          max-width="32"
-          max-height="32"
+          max-width="88"
+          max-height="88"
           contain
-          class="rounded-lg mr-3"
+          class="rounded-xl"
         ></v-img>
-        <span class="white--text text-h6 font-weight-bold">DStv Stream</span>
       </div>
 
-      <div class="d-flex align-center gap-2" v-if="signedIn">
-        <v-btn color="white" text icon small title="Reload" @click="reloadIframe">
-          <v-icon small>mdi-refresh</v-icon>
-        </v-btn>
-        <v-btn color="white" text icon small title="Sign out" @click="signOut">
-          <v-icon small>mdi-logout</v-icon>
-        </v-btn>
-      </div>
-    </div>
-
-    <!-- Pre-auth: Prompt user to sign in via popup -->
-    <div v-if="!signedIn" class="dstv-signin-screen d-flex flex-column align-center justify-center">
-      <v-img
-        src="https://cdn-1.webcatalog.io/catalog/dstv-now/dstv-now-icon-filled-256.png"
-        max-width="80"
-        max-height="80"
-        contain
-        class="rounded-2xl mb-6"
-      ></v-img>
-      <h2 class="white--text text-h5 font-weight-bold mb-2">Sign in to DStv</h2>
-      <p class="grey--text text-center mb-8 px-4 body-2" style="max-width:380px">
-        Your DStv session will open in a separate window. Once you sign in, the stream will load here automatically.
+      <!-- Title -->
+      <h1 class="white--text display-1 font-weight-black mb-2 dstv-title">DStv Stream</h1>
+      <p class="grey--text text--lighten-1 body-1 mb-10" style="max-width: 420px; line-height: 1.7">
+        Live TV, SuperSport, M-Net and Catch Up — powered by your DStv subscription.
       </p>
+
+      <!-- Primary CTA -->
       <v-btn
         color="#00A3E0"
         dark
         x-large
         rounded
-        class="px-10 font-weight-bold text-none dstv-signin-btn"
-        :loading="waitingForAuth"
-        @click="openLoginPopup"
+        class="px-12 font-weight-bold text-none dstv-launch-btn mb-4"
+        @click="launch"
       >
-        <v-icon left>mdi-lock-open-variant</v-icon>
-        Sign In to DStv
+        <v-icon left>mdi-television-play</v-icon>
+        Open DStv Stream
       </v-btn>
-      <p v-if="waitingForAuth" class="grey--text text-caption mt-4">
-        Waiting for sign-in to complete...
-      </p>
-    </div>
 
-    <!-- Post-auth: Load DStv stream -->
-    <div v-if="signedIn" class="dstv-frame-container">
-      <iframe
-        ref="dstvFrame"
-        src="https://dstv.stream/#/"
-        class="dstv-iframe"
-        allow="autoplay; fullscreen; encrypted-media; camera; microphone; clipboard-write"
-        sandbox="allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation-by-user-activation"
-      ></iframe>
+      <p class="grey--text text-caption">
+        Opens in a dedicated window — sign in with your DStv credentials there.
+      </p>
+
+      <!-- Feature Pills -->
+      <div class="d-flex flex-wrap justify-center gap-3 mt-10">
+        <div class="feature-pill d-flex align-center">
+          <v-icon small color="#00E5FF" class="mr-2">mdi-soccer</v-icon>
+          <span class="white--text caption font-weight-medium">SuperSport Live</span>
+        </div>
+        <div class="feature-pill d-flex align-center">
+          <v-icon small color="#00E5FF" class="mr-2">mdi-movie-roll</v-icon>
+          <span class="white--text caption font-weight-medium">M-Net Movies</span>
+        </div>
+        <div class="feature-pill d-flex align-center">
+          <v-icon small color="#00E5FF" class="mr-2">mdi-television-guide</v-icon>
+          <span class="white--text caption font-weight-medium">Catch Up TV</span>
+        </div>
+        <div class="feature-pill d-flex align-center">
+          <v-icon small color="#00E5FF" class="mr-2">mdi-formula-one</v-icon>
+          <span class="white--text caption font-weight-medium">Formula 1</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -72,97 +62,62 @@
 <script>
 export default {
   name: "DstvView",
-  data() {
-    return {
-      signedIn: false,
-      waitingForAuth: false,
-      authWindowTimer: null
-    };
-  },
-  beforeDestroy() {
-    if (this.authWindowTimer) clearInterval(this.authWindowTimer);
-  },
   methods: {
-    openLoginPopup() {
-      const width = 580;
-      const height = 700;
-      const left = window.screen.width / 2 - width / 2;
-      const top = window.screen.height / 2 - height / 2;
-
-      const popup = window.open(
-        "https://dstv.stream/#/login",
-        "DStvLogin",
-        `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`
+    launch() {
+      window.open(
+        "https://dstv.stream/#/",
+        "DStv_Stream_Window",
+        "noopener,noreferrer"
       );
-
-      if (!popup) return;
-
-      this.waitingForAuth = true;
-
-      if (this.authWindowTimer) clearInterval(this.authWindowTimer);
-      this.authWindowTimer = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(this.authWindowTimer);
-          this.authWindowTimer = null;
-          this.waitingForAuth = false;
-          this.signedIn = true;
-        }
-      }, 800);
-    },
-    reloadIframe() {
-      if (this.$refs.dstvFrame) {
-        this.$refs.dstvFrame.src = "https://dstv.stream/#/";
-      }
-    },
-    signOut() {
-      this.signedIn = false;
     }
   }
 };
 </script>
 
 <style scoped>
-.dstv-page {
+.dstv-launcher-page {
+  min-height: calc(100vh - 80px);
+  background: radial-gradient(ellipse at 50% 30%, rgba(0, 80, 140, 0.35) 0%, #060911 65%);
   display: flex;
-  flex-direction: column;
-  height: calc(100vh - 80px);
-  background: #060911;
+  align-items: center;
+  justify-content: center;
 }
 
-.dstv-header {
-  background: linear-gradient(90deg, #090d19, #0e1628);
-  border-bottom: 1px solid rgba(0, 163, 224, 0.15);
-  flex-shrink: 0;
-}
-
-.dstv-signin-screen {
-  flex: 1;
-  background: radial-gradient(ellipse at center, rgba(0, 60, 110, 0.25) 0%, #060911 70%);
-}
-
-.dstv-signin-btn {
-  box-shadow: 0 0 32px rgba(0, 163, 224, 0.45) !important;
-  transition: transform 0.2s ease !important;
-}
-
-.dstv-signin-btn:hover {
-  transform: scale(1.04) !important;
-}
-
-.dstv-frame-container {
-  flex: 1;
+.dstv-hero {
   width: 100%;
-  background: #000;
+  padding: 60px 16px;
 }
 
-.dstv-iframe {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  display: block;
+.dstv-logo-ring {
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 28px;
+  border: 1px solid rgba(0, 163, 224, 0.3);
+  box-shadow: 0 0 60px rgba(0, 163, 224, 0.2);
 }
 
-.gap-2 {
-  gap: 8px;
+.dstv-title {
+  letter-spacing: -1px;
+}
+
+.dstv-launch-btn {
+  box-shadow: 0 0 36px rgba(0, 163, 224, 0.5) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.dstv-launch-btn:hover {
+  transform: scale(1.05) !important;
+  box-shadow: 0 0 52px rgba(0, 163, 224, 0.7) !important;
+}
+
+.feature-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 100px;
+  padding: 8px 18px;
+}
+
+.gap-3 {
+  gap: 12px;
 }
 </style>
