@@ -1,48 +1,55 @@
 <template>
   <div class="dstv-portal-page">
     <!-- Top Portal Header Bar -->
-    <div class="dstv-portal-header pa-4 d-flex align-center justify-space-between flex-wrap gap-3">
+    <div class="dstv-portal-header pa-3 px-4 d-flex align-center justify-space-between flex-wrap gap-3">
       <div class="d-flex align-center">
         <v-btn icon dark class="mr-3" @click="$router.push('/')">
           <v-icon>mdi-arrow-left</v-icon>
         </v-btn>
         <v-img
           src="https://cdn-1.webcatalog.io/catalog/dstv-now/dstv-now-icon-filled-256.png"
-          max-width="36"
-          max-height="36"
+          max-width="34"
+          max-height="34"
           contain
           class="rounded-lg mr-3"
         ></v-img>
         <div>
           <h1 class="white--text text-h6 font-weight-bold mb-0">DStv Stream Portal</h1>
-          <span class="grey--text text-caption">Official DStv Streaming Web App (dstv.stream)</span>
+          <span class="grey--text text-caption">Official DStv Streaming Web App</span>
         </div>
       </div>
 
       <div class="d-flex align-center gap-2">
-        <v-btn color="info" outlined small class="text-none font-weight-bold" @click="reloadIframe">
-          <v-icon left small>mdi-refresh</v-icon>
-          Reload
+        <!-- Direct Authentication Popup Trigger -->
+        <v-btn
+          color="#00A3E0"
+          dark
+          small
+          class="text-none font-weight-bold px-4"
+          @click="openLoginPopup"
+        >
+          <v-icon left small>mdi-lock-open-variant</v-icon>
+          Sign In to DStv
         </v-btn>
-        <v-btn color="#00A3E0" dark small class="text-none font-weight-bold" @click="openExternalWindow">
-          <v-icon left small>mdi-open-in-new</v-icon>
-          Open Direct Window
+
+        <v-btn color="white" text icon small title="Reload Stream" @click="reloadIframe">
+          <v-icon small>mdi-refresh</v-icon>
+        </v-btn>
+
+        <v-btn color="white" text icon small title="Open in New Window" @click="openExternalWindow">
+          <v-icon small>mdi-open-in-new</v-icon>
         </v-btn>
       </div>
     </div>
 
-    <!-- Alert tip bar -->
-    <v-alert dense text type="info" class="dstv-tip-alert mx-4 my-2 text-caption">
-      Sign in with your DStv subscription credentials to stream live TV channels and Catch Up inside Ej's Movie app. If your browser blocks embedded sign-in, click <strong>Open Direct Window</strong> above.
-    </v-alert>
-
-    <!-- Embedded Portal Container -->
+    <!-- Embedded Portal Container (With Popup Allowed Sandbox) -->
     <div class="dstv-frame-container">
       <iframe
         ref="dstvFrame"
         src="https://dstv.stream/#/"
         class="dstv-iframe"
-        allow="autoplay; fullscreen; encrypted-media; camera; microphone"
+        allow="autoplay; fullscreen; encrypted-media; camera; microphone; clipboard-write"
+        sandbox="allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation-by-user-activation"
       ></iframe>
     </div>
   </div>
@@ -51,6 +58,16 @@
 <script>
 export default {
   name: "DstvView",
+  data() {
+    return {
+      authWindowTimer: null
+    };
+  },
+  beforeDestroy() {
+    if (this.authWindowTimer) {
+      clearInterval(this.authWindowTimer);
+    }
+  },
   methods: {
     reloadIframe() {
       if (this.$refs.dstvFrame) {
@@ -59,6 +76,32 @@ export default {
     },
     openExternalWindow() {
       window.open("https://dstv.stream/#/", "_blank", "noopener,noreferrer");
+    },
+    openLoginPopup() {
+      // Open login popup to bypass X-Frame-Options SAMEORIGIN block on authentication.dstv.stream
+      const width = 580;
+      const height = 720;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+      
+      const popup = window.open(
+        "https://dstv.stream/#/login",
+        "DStvAuthenticationWindow",
+        `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,status=yes`
+      );
+
+      // Poll popup closure to auto-refresh stream iframe once signed in
+      if (popup) {
+        if (this.authWindowTimer) clearInterval(this.authWindowTimer);
+        this.authWindowTimer = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(this.authWindowTimer);
+            this.authWindowTimer = null;
+            // Refresh iframe so DStv session cookie takes effect
+            this.reloadIframe();
+          }
+        }, 1000);
+      }
     }
   }
 };
@@ -68,33 +111,13 @@ export default {
 .dstv-portal-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 90px);
+  height: calc(100vh - 80px);
   background: #060911;
 }
 
 .dstv-portal-header {
   background: linear-gradient(90deg, #090d19, #0e1628);
   border-bottom: 1px solid rgba(0, 163, 224, 0.2);
-}
-
-.dstv-logo-badge-header {
-  background: linear-gradient(135deg, #00A3E0, #0051A8);
-  padding: 4px 14px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 163, 224, 0.4);
-}
-
-.dstv-text-header {
-  color: #ffffff;
-  font-weight: 900;
-  font-size: 1.2rem;
-  letter-spacing: -0.5px;
-}
-
-.dstv-tip-alert {
-  border-radius: 10px !important;
-  background-color: rgba(0, 163, 224, 0.1) !important;
-  border: 1px solid rgba(0, 163, 224, 0.2) !important;
 }
 
 .dstv-frame-container {
