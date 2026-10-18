@@ -113,6 +113,7 @@ export default {
         backdropPath: this.show.backdrop_path,
         voteAverage: this.show.vote_average,
         genreIds: this.show.genre_ids,
+        releaseDate: this.show.first_air_date,
       });
     },
   },

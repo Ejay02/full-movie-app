@@ -148,10 +148,18 @@
         </div>
       </div>
 
-      <!-- Bottom warning tip for public embeds -->
-      <div v-if="activeProviderId !== 'personal'" class="theater-tip pa-2 text-center text-caption grey--text">
-        <span><strong>Tip:</strong> If you see popups, please use an <strong>ad-blocker</strong> like uBlock Origin.</span>
-      </div>
+      <!-- Bottom warning tip for public embeds (auto-dismisses after 7s to unblock controls) -->
+      <transition name="fade">
+        <div
+          v-if="showTheaterTip && activeProviderId !== 'personal'"
+          class="theater-tip pa-2 d-flex align-center justify-center text-caption grey--text"
+        >
+          <span><strong>Tip:</strong> If you see popups, please use an <strong>ad-blocker</strong> like uBlock Origin.</span>
+          <v-btn icon x-small class="ml-2 grey--text" @click="showTheaterTip = false" title="Dismiss">
+            <v-icon x-small>mdi-close</v-icon>
+          </v-btn>
+        </div>
+      </transition>
     </div>
   </div>
 </template>
@@ -214,7 +222,11 @@ export default {
           movieUrl: (id) => `https://vidsrc.me/embed/movie?tmdb=${id}`,
           tvUrl: (id, season, episode) => `https://vidsrc.me/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`,
         }
-      ]
+      ],
+
+      // Bottom Tip Auto-dismiss
+      showTheaterTip: true,
+      tipTimer: null
     };
   },
   computed: {
@@ -311,6 +323,7 @@ export default {
   beforeDestroy() {
     this.clearBufferingCheck();
     this.clearCountdown();
+    if (this.tipTimer) clearTimeout(this.tipTimer);
     window.removeEventListener("keydown", this.handleKeyDown);
   },
   methods: {
@@ -321,6 +334,13 @@ export default {
       this.autoplayCancelled = false;
       this.showNextEpisodeCountdown = false;
       this.clearCountdown();
+
+      // Show tip briefly, then auto-dismiss after 7 seconds
+      this.showTheaterTip = true;
+      if (this.tipTimer) clearTimeout(this.tipTimer);
+      this.tipTimer = setTimeout(() => {
+        this.showTheaterTip = false;
+      }, 7000);
 
       // Default server
       this.activeProviderId = this.hasPersonalSource ? "personal" : "vidlink";
@@ -730,13 +750,25 @@ export default {
 }
 
 .theater-tip {
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.88);
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 5;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  z-index: 10;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.fade-enter,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
 }
 
 .gap-2 {

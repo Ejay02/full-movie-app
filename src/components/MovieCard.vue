@@ -116,6 +116,7 @@ export default {
         backdropPath: this.movie.backdrop_path,
         voteAverage: this.movie.vote_average,
         genreIds: this.movie.genre_ids,
+        releaseDate: this.movie.release_date,
       });
     },
   },

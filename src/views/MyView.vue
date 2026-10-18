@@ -7,7 +7,6 @@
       <h2 class="page-title mb-2">My View</h2>
     </div>
 
-
     <div v-if="myViewItems.length || showEmptyState" class="saved-section mt-4">
       <div v-if="showEmptyState" class="empty-state-shell">
         <div class="empty-state">
@@ -22,33 +21,33 @@
         </div>
       </div>
 
-      <v-row v-else dense class="mt-2">
-        <v-col
+      <div v-else class="saved-grid mt-4">
+        <div
           v-for="item in myViewItems"
           :key="item.id"
-          cols="6"
-          sm="4"
-          md="3"
-          lg="2"
+          class="saved-grid-item"
         >
           <v-card class="saved-card" flat>
             <router-link :to="detailRoute(item)" class="saved-link">
-              <v-img :src="posterPath(item)" class="saved-poster">
+              <div class="saved-poster-frame">
+                <v-img :src="posterPath(item)" class="saved-poster">
+                  <div class="saved-overlay">
+                    <span class="saved-type">
+                      {{ item.mediaType === "tv" ? "Series" : "Movie" }}
+                    </span>
+                  </div>
+                </v-img>
                 <span class="quality-badge">{{ getQualityTag(item) }}</span>
                 <v-btn
                   icon
                   small
                   class="saved-remove-btn"
                   @click.prevent.stop="removeItem(item.id)"
+                  title="Remove from Watchlist"
                 >
                   <v-icon small color="white">mdi-close</v-icon>
                 </v-btn>
-                <div class="saved-overlay">
-                  <span class="saved-type">
-                    {{ item.mediaType === "tv" ? "Series" : "Movie" }}
-                  </span>
-                </div>
-              </v-img>
+              </div>
             </router-link>
 
             <div class="saved-content">
@@ -65,8 +64,8 @@
               </div>
             </div>
           </v-card>
-        </v-col>
-      </v-row>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -111,7 +110,23 @@ export default {
       if (item.mediaType === "tv") {
         return "FHD";
       }
-      return parseInt(item.mediaId) % 3 === 0 ? "4K" : "FHD";
+      if (item.releaseDate) {
+        try {
+          const releaseDate = new Date(item.releaseDate);
+          const today = new Date();
+          const diffDays = Math.ceil(Math.abs(today - releaseDate) / (1000 * 60 * 60 * 24));
+          if (diffDays < 60) return "CAM";
+          if (diffDays < 120) return "HD";
+          return parseInt(item.mediaId) % 3 === 0 ? "4K" : "FHD";
+        } catch (e) {
+          return "FHD";
+        }
+      }
+      // If no releaseDate is stored, calculate based on TMDB ID
+      const idNum = parseInt(item.mediaId) || 0;
+      if (idNum > 1000000) return "CAM";
+      if (idNum > 800000) return "HD";
+      return idNum % 3 === 0 ? "4K" : "FHD";
     },
   },
 };
@@ -120,6 +135,8 @@ export default {
 <style scoped>
 .my-view-page {
   padding-top: 12px;
+  padding-bottom: 110px;
+  min-height: calc(100vh - 200px);
 }
 
 .hero-copy {
@@ -136,11 +153,6 @@ export default {
 .page-title {
   font-size: 2rem;
   line-height: 1.1;
-}
-
-.page-description {
-  max-width: 680px;
-  color: rgba(255, 255, 255, 0.68);
 }
 
 .empty-state-shell {
@@ -165,9 +177,28 @@ export default {
   color: rgba(255, 255, 255, 0.64);
 }
 
+.saved-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(165px, 195px));
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .saved-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
+.saved-grid-item {
+  display: flex;
+}
+
 .saved-card {
   overflow: hidden;
-  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
   border-radius: 12px !important;
   background: linear-gradient(
     180deg,
@@ -175,11 +206,24 @@ export default {
     rgba(10, 12, 20, 0.96)
   ) !important;
   border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.saved-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .saved-link {
   display: block;
   text-decoration: none;
+}
+
+.saved-poster-frame {
+  position: relative;
+  overflow: hidden;
 }
 
 .saved-poster {
@@ -190,8 +234,8 @@ export default {
   position: absolute;
   top: 8px;
   right: 8px;
-  z-index: 3;
-  background: rgba(7, 10, 16, 0.58);
+  z-index: 6;
+  background: rgba(7, 10, 16, 0.65);
   backdrop-filter: blur(10px);
 }
 
@@ -199,16 +243,17 @@ export default {
   position: absolute;
   top: 8px;
   left: 8px;
-  z-index: 5;
+  z-index: 6;
   background: linear-gradient(135deg, #ff5252, #ff1744);
   color: #ffffff;
   font-size: 0.7rem;
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 2px 7px;
   border-radius: 4px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  pointer-events: none;
 }
 
 .saved-overlay {
@@ -226,13 +271,14 @@ export default {
 
 .saved-type {
   display: inline-flex;
-  padding: 6px 10px;
+  padding: 5px 9px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  backdrop-filter: blur(4px);
 }
 
 .saved-content {
@@ -283,6 +329,4 @@ export default {
   color: rgba(255, 255, 255, 0.88);
   font-weight: 600;
 }
-
-
 </style>
