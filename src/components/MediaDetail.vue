@@ -248,6 +248,8 @@
               </v-col>
             </v-row>
           </div>
+        </v-card>
+
         <!-- Cast & Characters Section -->
         <v-card v-if="castMembers && castMembers.length" class="cast-card pa-4 mb-8" flat>
           <h3 class="section-heading mb-4 text-h6 font-weight-bold white--text">Cast & Characters</h3>
