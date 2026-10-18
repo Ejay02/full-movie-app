@@ -43,11 +43,11 @@
     <!-- Continue Watching Section -->
     <ContinueWatchingSection />
 
-    <!-- Curated with 🖤 for Timi -->
+    <!-- Curated with 🖤 for You -->
     <div class="section-header">
       <div>
         <p class="eyebrow cyan--text text--accent-3 mb-1">Handpicked Favorites</p>
-        <h2 class="section-title mb-2">Curated for Timi 🖤</h2>
+        <h2 class="section-title mb-2">Curated for You 🖤</h2>
       </div>
     </div>
     <v-slide-group v-if="curatedMovies && curatedMovies.length" class="content-slider pa-0 mb-8" show-arrows>
@@ -129,11 +129,11 @@ export default {
   computed: {
     greetingText() {
       const hour = new Date().getHours();
-      if (hour >= 5 && hour < 12) return "Good morning Timi ☕ Ready for movie time?";
-      if (hour >= 12 && hour < 14) return "Noon movie time Timi ☀️ Popcorn ready? 🍿";
-      if (hour >= 14 && hour < 18) return "Good afternoon Timi ☀️ Time for a cozy movie break?";
-      if (hour >= 18 && hour < 22) return "Good evening Timi ✨ Movie Night time!";
-      return "Late night cinema Timi 🌙 Popcorn ready? 🍿";
+      if (hour >= 5 && hour < 12) return "Good morning ☕ Ready for movie time?";
+      if (hour >= 12 && hour < 14) return "Noon movie time ☀️ Popcorn ready? 🍿";
+      if (hour >= 14 && hour < 18) return "Good afternoon ☀️ Time for a cozy movie break?";
+      if (hour >= 18 && hour < 22) return "Good evening ✨ Movie Night time!";
+      return "Late night cinema 🌙 Popcorn ready? 🍿";
     },
   },
   async mounted() {
