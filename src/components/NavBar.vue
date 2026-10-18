@@ -3,9 +3,8 @@
     <v-app-bar app flat dark class="glass-nav px-4">
       <v-btn text class="ml-2 brand-btn" to="/">
         <v-icon class="mr-2">mdi-movie-open</v-icon>
-
-        Ej's Movie</v-btn
-      >
+        TimiStream
+      </v-btn>
 
       <!-- <v-btn text class="ml-2">Contact</v-btn> -->
       <v-spacer></v-spacer>
