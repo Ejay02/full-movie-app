@@ -107,6 +107,47 @@ import UpcomingMovies from "@/components/UpcomingMovies.vue";
 import ContinueWatchingSection from "@/components/ContinueWatchingSection.vue";
 import SurpriseModal from "@/components/SurpriseModal.vue";
 
+const TIME_BASED_GREETINGS = {
+  morning: [
+    "Rise and stream. What's on the watchlist?",
+    "Good morning. Ready for movie time?",
+    "Start the day with a story.",
+  ],
+  noon: [
+    "Lunch break 🍿 Pick a movie, grab a snack.",
+    "Noon. Pause the day, press play.",
+    "Midday escape. One quick watch?",
+  ],
+  afternoon: [
+    "Slow afternoon. Perfect for a movie.",
+    "Afternoon. Your couch is calling.",
+    "Take five. Make it a movie.",
+  ],
+  evening: [
+    "Lights down ✨ Movie night starts now.",
+    "Good evening. Movie night time!",
+    "Evening. Tonight's pick awaits.",
+  ],
+  lateNight: [
+    "Still up? One more movie 🍿",
+    "After hours. The best films play now.",
+    "Night owl mode. Press play.",
+  ],
+};
+
+function getRandomGreeting() {
+  const hour = new Date().getHours();
+  let bucket = "lateNight";
+  if (hour >= 5 && hour < 12) bucket = "morning";
+  else if (hour >= 12 && hour < 14) bucket = "noon";
+  else if (hour >= 14 && hour < 18) bucket = "afternoon";
+  else if (hour >= 18 && hour < 22) bucket = "evening";
+
+  const options = TIME_BASED_GREETINGS[bucket];
+  const index = Math.floor(Math.random() * options.length);
+  return options[index];
+}
+
 export default {
   components: {
     MovieCard,
@@ -124,17 +165,8 @@ export default {
       errorMessage: "",
       loading: true,
       showSurpriseModal: false,
+      greetingText: getRandomGreeting(),
     };
-  },
-  computed: {
-    greetingText() {
-      const hour = new Date().getHours();
-      if (hour >= 5 && hour < 12) return "Good morning ☕ Ready for movie time?";
-      if (hour >= 12 && hour < 14) return "Noon movie time ☀️ Popcorn ready? 🍿";
-      if (hour >= 14 && hour < 18) return "Good afternoon ☀️ Time for a cozy movie break?";
-      if (hour >= 18 && hour < 22) return "Good evening ✨ Movie Night time!";
-      return "Late night cinema 🌙 Popcorn ready? 🍿";
-    },
   },
   async mounted() {
     await this.loadHomePage();
