@@ -14,9 +14,19 @@
     </div>
 
     <!-- Player Screen -->
-    <div v-else class="theater-player-container">
+    <div
+      v-else
+      class="theater-player-container"
+      @mousemove="resetControlsTimer"
+      @touchstart="resetControlsTimer"
+    >
       <!-- Floating Top Control Bar -->
-      <div class="theater-control-bar pa-4 d-flex align-center justify-space-between flex-wrap gap-2">
+      <div
+        :class="[
+          'theater-control-bar pa-4 d-flex align-center justify-space-between flex-wrap gap-2',
+          { 'controls-hidden': controlsHidden && !showEpisodeDrawer }
+        ]"
+      >
         <div class="d-flex align-center min-w-0">
           <v-btn icon dark large class="back-btn mr-3" @click="goBack">
             <v-icon>mdi-arrow-left</v-icon>
@@ -48,6 +58,19 @@
               </v-btn>
             </v-btn-toggle>
           </div>
+
+          <!-- Quick Episode Drawer toggle (TV Series only) -->
+          <v-btn
+            v-if="mediaType === 'tv'"
+            color="rgba(255, 255, 255, 0.12)"
+            depressed
+            small
+            class="text-none font-weight-bold mr-2 episode-drawer-btn"
+            @click="toggleEpisodeDrawer"
+          >
+            <v-icon left small>mdi-playlist-play</v-icon>
+            Episodes
+          </v-btn>
 
           <!-- Next Ep button -->
           <v-btn
@@ -108,13 +131,27 @@
 
           <!-- Native Seek Overlays (FF 10 & Backward 10) -->
           <div class="theater-seek-overlay">
-            <v-btn fab dark color="rgba(0, 0, 0, 0.55)" class="seek-btn mx-3" @click="seek(-10)" title="Rewind 10s">
+            <v-btn fab dark color="rgba(0, 0, 0, 0.55)" class="seek-btn mx-3" @click="triggerQuickSeek(-10)" title="Rewind 10s">
               <v-icon>mdi-rewind-10</v-icon>
             </v-btn>
-            <v-btn fab dark color="rgba(0, 0, 0, 0.55)" class="seek-btn mx-3" @click="seek(10)" title="Forward 10s">
+            <v-btn fab dark color="rgba(0, 0, 0, 0.55)" class="seek-btn mx-3" @click="triggerQuickSeek(10)" title="Forward 10s">
               <v-icon>mdi-fast-forward-10</v-icon>
             </v-btn>
           </div>
+
+          <!-- Quick Seek Visual Feedback Indicators -->
+          <transition name="scale">
+            <div v-if="showRewindIndicator" class="quick-seek-feedback rewind-feedback">
+              <v-icon large color="white">mdi-rewind-10</v-icon>
+              <span class="caption white--text font-weight-bold">-10s</span>
+            </div>
+          </transition>
+          <transition name="scale">
+            <div v-if="showForwardIndicator" class="quick-seek-feedback forward-feedback">
+              <v-icon large color="white">mdi-fast-forward-10</v-icon>
+              <span class="caption white--text font-weight-bold">+10s</span>
+            </div>
+          </transition>
 
           <!-- Netflix-Style Autoplay Countdown Card overlay -->
           <v-fade-transition>
@@ -167,6 +204,96 @@
             <v-icon x-small>mdi-close</v-icon>
           </v-btn>
         </div>
+      </transition>
+
+      <!-- In-Player Quick Episode Drawer (TV series) -->
+      <transition name="drawer-slide">
+        <div v-if="showEpisodeDrawer && mediaType === 'tv'" class="theater-episode-drawer">
+          <div class="drawer-header pa-4 d-flex align-center justify-space-between">
+            <div class="d-flex align-center">
+              <v-icon color="#00E5FF" class="mr-2">mdi-playlist-play</v-icon>
+              <span class="white--text font-weight-bold text-subtitle-1">Episodes</span>
+            </div>
+            <v-btn icon small dark @click="showEpisodeDrawer = false" title="Close drawer">
+              <v-icon small>mdi-close</v-icon>
+            </v-btn>
+          </div>
+
+          <!-- Season Selector -->
+          <div class="px-4 pb-3">
+            <v-select
+              v-model="selectedSeason"
+              :items="seasonOptions"
+              label="Season"
+              dense
+              outlined
+              dark
+              hide-details
+              class="theater-season-select"
+              @change="handleSeasonChange"
+            ></v-select>
+          </div>
+
+          <!-- Episodes list -->
+          <div class="drawer-episode-list pa-4 pt-0">
+            <div v-if="loadingSeasonEpisodes" class="d-flex justify-center py-8">
+              <v-progress-circular indeterminate color="#00E5FF" size="32"></v-progress-circular>
+            </div>
+            <div v-else-if="!episodes.length" class="text-center py-8 grey--text text-caption">
+              No episodes found for Season {{ selectedSeason }}.
+            </div>
+            <div v-else class="episode-list-items">
+              <div
+                v-for="ep in episodes"
+                :key="ep.id"
+                :class="[
+                  'drawer-episode-item mb-2 pa-2 d-flex align-center',
+                  { 'active-episode-item': ep.episode_number === selectedEpisode }
+                ]"
+                @click="selectDrawerEpisode(ep.episode_number)"
+              >
+                <div class="drawer-ep-thumb-wrapper mr-3">
+                  <v-img
+                    :src="episodeStillUrl(ep.still_path)"
+                    width="80"
+                    height="48"
+                    class="rounded"
+                    cover
+                  >
+                    <div
+                      v-if="ep.episode_number === selectedEpisode"
+                      class="drawer-thumb-playing d-flex align-center justify-center"
+                    >
+                      <v-icon small color="#00E5FF">mdi-play</v-icon>
+                    </div>
+                  </v-img>
+                </div>
+                <div class="min-w-0 flex-grow-1">
+                  <div class="d-flex align-center justify-space-between gap-1 mb-1">
+                    <span class="white--text text-caption font-weight-bold text-truncate">
+                      E{{ ep.episode_number }}. {{ ep.name }}
+                    </span>
+                    <span v-if="ep.episode_number === selectedEpisode" class="drawer-playing-chip">
+                      Playing
+                    </span>
+                  </div>
+                  <div class="grey--text text-caption text-truncate">
+                    {{ ep.air_date || (ep.overview ? ep.overview : '') }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Episode Drawer Backdrop -->
+      <transition name="fade">
+        <div
+          v-if="showEpisodeDrawer && mediaType === 'tv'"
+          class="theater-drawer-backdrop"
+          @click="showEpisodeDrawer = false"
+        ></div>
       </transition>
     </div>
   </div>
@@ -251,7 +378,20 @@ export default {
 
       // Bottom Tip Auto-dismiss
       showTheaterTip: true,
-      tipTimer: null
+      tipTimer: null,
+
+      // Episode drawer
+      showEpisodeDrawer: false,
+      loadingSeasonEpisodes: false,
+
+      // Controls Auto-Hide
+      controlsHidden: false,
+      controlsTimer: null,
+
+      // Seek feedback
+      showRewindIndicator: false,
+      showForwardIndicator: false,
+      seekIndicatorTimer: null
     };
   },
   computed: {
@@ -328,6 +468,19 @@ export default {
       }
       return this.backdropPath;
     },
+    seasonOptions() {
+      if (!this.media || !this.media.seasons) {
+        return [{ text: `Season ${this.selectedSeason}`, value: this.selectedSeason }];
+      }
+      const valid = this.media.seasons
+        .filter(s => s.season_number > 0)
+        .map(s => ({
+          text: s.name || `Season ${s.season_number}`,
+          value: s.season_number,
+        }))
+        .sort((a, b) => a.value - b.value);
+      return valid.length > 0 ? valid : [{ text: `Season ${this.selectedSeason}`, value: this.selectedSeason }];
+    },
     continueWatchingEntry() {
       return this.$store.getters.continueWatchingItemByKey(
         this.mediaType,
@@ -350,6 +503,7 @@ export default {
   },
   async mounted() {
     await this.loadPlayDetails();
+    this.resetControlsTimer();
     window.addEventListener("keydown", this.handleKeyDown);
   },
   beforeDestroy() {
@@ -357,6 +511,8 @@ export default {
     this.clearCountdown();
     if (this.tipTimer) clearTimeout(this.tipTimer);
     if (this.switchToastTimer) clearTimeout(this.switchToastTimer);
+    if (this.controlsTimer) clearTimeout(this.controlsTimer);
+    if (this.seekIndicatorTimer) clearTimeout(this.seekIndicatorTimer);
     window.removeEventListener("keydown", this.handleKeyDown);
   },
   methods: {
@@ -629,10 +785,10 @@ export default {
 
         if (e.key === "ArrowLeft") {
           e.preventDefault();
-          this.seek(-10);
+          this.triggerQuickSeek(-10);
         } else if (e.key === "ArrowRight") {
           e.preventDefault();
-          this.seek(10);
+          this.triggerQuickSeek(10);
         } else if (e.key === " ") {
           e.preventDefault();
           if (player.paused) {
@@ -641,6 +797,58 @@ export default {
             player.pause();
           }
         }
+      }
+    },
+
+    // In-Player Quick Episode Drawer & Seeking Methods
+    toggleEpisodeDrawer() {
+      this.showEpisodeDrawer = !this.showEpisodeDrawer;
+      if (this.showEpisodeDrawer) {
+        this.resetControlsTimer();
+      }
+    },
+    async handleSeasonChange(newSeason) {
+      this.selectedSeason = Number(newSeason);
+      this.loadingSeasonEpisodes = true;
+      await this.fetchEpisodes();
+      this.loadingSeasonEpisodes = false;
+      if (this.episodes.length > 0) {
+        this.playEpisode(this.episodes[0].episode_number);
+      }
+    },
+    selectDrawerEpisode(episodeNum) {
+      this.playEpisode(episodeNum);
+      this.showEpisodeDrawer = false;
+    },
+    episodeStillUrl(stillPath) {
+      if (stillPath) {
+        return `https://image.tmdb.org/t/p/w300/${stillPath}`;
+      }
+      return this.backdropPath || "";
+    },
+    triggerQuickSeek(secs) {
+      this.seek(secs);
+      if (secs < 0) {
+        this.showRewindIndicator = true;
+        this.showForwardIndicator = false;
+      } else {
+        this.showForwardIndicator = true;
+        this.showRewindIndicator = false;
+      }
+      if (this.seekIndicatorTimer) clearTimeout(this.seekIndicatorTimer);
+      this.seekIndicatorTimer = setTimeout(() => {
+        this.showRewindIndicator = false;
+        this.showForwardIndicator = false;
+      }, 750);
+      this.resetControlsTimer();
+    },
+    resetControlsTimer() {
+      this.controlsHidden = false;
+      if (this.controlsTimer) clearTimeout(this.controlsTimer);
+      if (!this.showEpisodeDrawer) {
+        this.controlsTimer = setTimeout(() => {
+          this.controlsHidden = true;
+        }, 4000);
       }
     }
   }
@@ -686,7 +894,12 @@ export default {
   left: 0;
   right: 0;
   z-index: 10;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.4s ease;
+}
+
+.theater-control-bar.controls-hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .back-btn {
@@ -853,5 +1066,122 @@ export default {
     bottom: 70px;
     width: auto;
   }
+}
+
+.episode-drawer-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px);
+}
+
+/* Slide-out Episode Drawer */
+.theater-episode-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  max-width: 88vw;
+  z-index: 200;
+  background: rgba(10, 14, 24, 0.96);
+  border-left: 1px solid rgba(0, 229, 255, 0.2);
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+}
+
+.theater-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 190;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.drawer-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.drawer-episode-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.drawer-episode-item {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.drawer-episode-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(0, 229, 255, 0.3);
+  transform: translateX(-2px);
+}
+
+.active-episode-item {
+  background: rgba(0, 229, 255, 0.1) !important;
+  border-color: rgba(0, 229, 255, 0.5) !important;
+}
+
+.drawer-ep-thumb-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.drawer-thumb-playing {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.drawer-playing-chip {
+  background: #00E5FF;
+  color: #000;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+/* Quick seek feedback animations */
+.quick-seek-feedback {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 16px 20px;
+  border-radius: 16px;
+  pointer-events: none;
+  z-index: 50;
+  backdrop-filter: blur(6px);
+}
+
+.rewind-feedback {
+  left: 20%;
+}
+
+.forward-feedback {
+  right: 20%;
+}
+
+/* Drawer slide transitions */
+.drawer-slide-enter-active,
+.drawer-slide-leave-active {
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.drawer-slide-enter,
+.drawer-slide-leave-to {
+  transform: translateX(100%);
 }
 </style>
