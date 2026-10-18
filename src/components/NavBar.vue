@@ -56,37 +56,143 @@
             class="rounded-lg"
           ></v-img>
         </v-btn>
-        <v-btn
-          text
-          class="ml-2 nav-link"
-          :class="{ 'nav-link--active': isActive('/my-view') }"
-          to="/my-view"
+        <!-- Views Dropdown (My View & Our View) -->
+        <v-menu
+          offset-y
+          transition="slide-y-transition"
+          content-class="views-menu-dropdown"
+          rounded="lg"
+          min-width="240"
         >
-          My View
-        </v-btn>
-        <v-btn
-          text
-          class="ml-2 nav-link our-view-nav-link"
-          :class="{ 'nav-link--active': isActive('/our-view') }"
-          to="/our-view"
-        >
-          <v-icon left x-small color="#FF4081">mdi-heart</v-icon>
-          Our View
-        </v-btn>
+          <template #activator="{ on, attrs }">
+            <v-btn
+              text
+              class="ml-2 nav-link views-nav-btn"
+              :class="{ 'nav-link--active': isViewsActive }"
+              v-bind="attrs"
+              v-on="on"
+            >
+              <v-icon v-if="isActive('/our-view')" left x-small color="#FF4081">mdi-heart</v-icon>
+              <span>{{ activeViewLabel }}</span>
+              <v-icon right x-small class="ml-1">mdi-chevron-down</v-icon>
+            </v-btn>
+          </template>
+
+          <v-list dark dense class="views-dropdown-list py-2">
+            <v-list-item to="/my-view" :class="{ 'v-list-item--active': isActive('/my-view') }">
+              <v-list-item-icon class="mr-3">
+                <v-icon small color="white">mdi-view-grid-outline</v-icon>
+              </v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title class="font-weight-bold">My View</v-list-item-title>
+                <v-list-item-subtitle class="caption grey--text">Personal Watchlist</v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
+
+            <v-list-item to="/our-view" :class="{ 'v-list-item--active': isActive('/our-view') }">
+              <v-list-item-icon class="mr-3">
+                <v-icon small color="#FF4081">mdi-heart</v-icon>
+              </v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title class="font-weight-bold rose--text" style="color: #FF80AB;">Our View</v-list-item-title>
+                <v-list-item-subtitle class="caption grey--text">Date Night & Watch Together</v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
+
+            <v-divider class="my-2"></v-divider>
+
+            <v-list-item @click="copyInviteLink">
+              <v-list-item-icon class="mr-3">
+                <v-icon small color="#00E5FF">mdi-link-variant</v-icon>
+              </v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title class="font-weight-medium">Copy Invite Link</v-list-item-title>
+                <v-list-item-subtitle class="caption grey--text">Date Night room link</v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
+
+            <v-divider class="my-2"></v-divider>
+
+            <!-- Identity Switcher -->
+            <div class="px-4 py-2">
+              <div class="grey--text caption font-weight-bold mb-2">Watching as:</div>
+              <v-btn-toggle
+                v-model="currentUser"
+                mandatory
+                dense
+                class="navbar-user-toggle d-flex"
+                @change="switchUser"
+              >
+                <v-btn value="Timi" small class="text-none font-weight-bold flex-grow-1">
+                  <v-icon x-small left color="#FF4081">mdi-heart</v-icon>
+                  Timi
+                </v-btn>
+                <v-btn value="Ejay" small class="text-none font-weight-bold flex-grow-1">
+                  <v-icon x-small left color="#00E5FF">mdi-star</v-icon>
+                  Ejay
+                </v-btn>
+              </v-btn-toggle>
+            </div>
+          </v-list>
+        </v-menu>
       </div>
-      <v-badge
-        bordered
-        bottom
-        color="green"
-        dot
-        offset-x="10"
-        offset-y="10"
-        class="ml-2"
-      >
-        <v-avatar size="40">
-          <v-img src="../assets/20201010_063656.jpg"></v-img>
-        </v-avatar>
-      </v-badge>
+
+      <!-- User Avatar with Profile Switcher Menu -->
+      <v-menu offset-y transition="slide-y-transition" rounded="lg" min-width="180">
+        <template #activator="{ on, attrs }">
+          <v-badge
+            bordered
+            bottom
+            :color="currentUser === 'Timi' ? '#FF4081' : '#00E5FF'"
+            dot
+            offset-x="10"
+            offset-y="10"
+            class="ml-2 cursor-pointer"
+            v-bind="attrs"
+            v-on="on"
+          >
+            <v-avatar size="40" class="nav-avatar">
+              <v-img src="../assets/20201010_063656.jpg"></v-img>
+            </v-avatar>
+          </v-badge>
+        </template>
+        <v-list dark dense class="profile-dropdown-list py-2">
+          <v-list-item>
+            <v-list-item-content>
+              <v-list-item-title class="font-weight-bold">
+                {{ currentUser }}
+                <v-icon x-small :color="currentUser === 'Timi' ? '#FF4081' : '#00E5FF'" class="ml-1">
+                  {{ currentUser === 'Timi' ? 'mdi-heart' : 'mdi-star' }}
+                </v-icon>
+              </v-list-item-title>
+              <v-list-item-subtitle class="caption grey--text">Active Profile</v-list-item-subtitle>
+            </v-list-item-content>
+          </v-list-item>
+          <v-divider class="my-1"></v-divider>
+          <v-list-item @click="switchUser(currentUser === 'Timi' ? 'Ejay' : 'Timi')">
+            <v-list-item-icon class="mr-3">
+              <v-icon small color="#00E5FF">mdi-account-switch</v-icon>
+            </v-list-item-icon>
+            <v-list-item-title class="caption">
+              Switch to {{ currentUser === 'Timi' ? 'Ejay' : 'Timi' }}
+            </v-list-item-title>
+          </v-list-item>
+          <v-list-item to="/our-view">
+            <v-list-item-icon class="mr-3">
+              <v-icon small color="#FF4081">mdi-television-play</v-icon>
+            </v-list-item-icon>
+            <v-list-item-title class="caption">Watch Together</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+
+      <!-- Global Navbar Snackbar -->
+      <v-snackbar v-model="snackbar" timeout="2500" top color="rgba(10, 14, 24, 0.95)">
+        <div class="d-flex align-center">
+          <v-icon small color="#00E5FF" class="mr-2">mdi-check-circle</v-icon>
+          <span class="white--text font-weight-medium text-caption">{{ snackbarText }}</span>
+        </div>
+      </v-snackbar>
     </v-app-bar>
   </nav>
 </template>
@@ -97,12 +203,32 @@ export default {
   data() {
     return {
       searchQuery: this.$route.query.q || "",
+      currentUser: localStorage.getItem("our_view_user") || "Timi",
+      snackbar: false,
+      snackbarText: "",
     };
+  },
+  computed: {
+    isViewsActive() {
+      return this.isActive("/my-view") || this.isActive("/our-view");
+    },
+    activeViewLabel() {
+      if (this.isActive("/our-view")) return "Our View";
+      return "My View";
+    },
   },
   watch: {
     "$route.query.q"(newVal) {
       this.searchQuery = newVal || "";
     },
+  },
+  mounted() {
+    window.addEventListener("user-identity-changed", this.syncIdentity);
+    window.addEventListener("storage", this.handleStorage);
+  },
+  beforeDestroy() {
+    window.removeEventListener("user-identity-changed", this.syncIdentity);
+    window.removeEventListener("storage", this.handleStorage);
   },
   methods: {
     isActive(path) {
@@ -121,6 +247,36 @@ export default {
         path: "/search",
         query: { q },
       }).catch(() => {});
+    },
+    switchUser(user) {
+      this.currentUser = user;
+      localStorage.setItem("our_view_user", user);
+      window.dispatchEvent(new CustomEvent("user-identity-changed", { detail: user }));
+      this.showToast(`Switched profile to ${user}`);
+    },
+    syncIdentity(e) {
+      if (e && e.detail) {
+        this.currentUser = e.detail;
+      } else {
+        this.currentUser = localStorage.getItem("our_view_user") || "Timi";
+      }
+    },
+    handleStorage(e) {
+      if (e.key === "our_view_user" && e.newValue) {
+        this.currentUser = e.newValue;
+      }
+    },
+    copyInviteLink() {
+      const url = `${window.location.origin}/our-view?room=date-night`;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+          this.showToast("Date Night invite link copied! 🥂");
+        });
+      }
+    },
+    showToast(msg) {
+      this.snackbarText = msg;
+      this.snackbar = true;
     },
   },
 };
@@ -179,6 +335,38 @@ export default {
 .our-view-nav-link.nav-link--active {
   background: linear-gradient(135deg, rgba(233, 30, 99, 0.9), rgba(255, 64, 129, 0.75)) !important;
   box-shadow: 0 10px 22px rgba(233, 30, 99, 0.35) !important;
+}
+
+.views-dropdown-list,
+.profile-dropdown-list {
+  background: rgba(10, 14, 25, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  backdrop-filter: blur(16px);
+}
+
+.navbar-user-toggle {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 999px !important;
+  padding: 2px;
+}
+
+.navbar-user-toggle .v-btn--active {
+  background: rgba(255, 64, 129, 0.35) !important;
+  color: #fff !important;
+}
+
+.nav-avatar {
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  transition: transform 0.2s ease;
+}
+
+.nav-avatar:hover {
+  transform: scale(1.05);
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 
 @media (max-width: 760px) {

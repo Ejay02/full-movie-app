@@ -14,7 +14,7 @@
             </span>
           </div>
           <h1 class="page-title white--text text-h4 font-weight-black mb-1">
-            Our View <span class="heart-pulse">🖤</span>
+            Our View
           </h1>
           <p class="grey--text text--lighten-2 text-body-2 mb-0">
             For the movies we share together, even when miles apart.
@@ -177,11 +177,40 @@
                     {{ prov.name }}
                   </v-btn>
                 </v-btn-toggle>
-                <v-btn icon small dark class="ml-2" title="Close Player" @click="closePlayer">
+                <v-btn
+                  x-small
+                  depressed
+                  color="rgba(0, 229, 255, 0.15)"
+                  class="cyan--text text--accent-2 text-none font-weight-bold ml-1"
+                  title="Auto-switch to next server"
+                  @click="autoSwitchProvider"
+                >
+                  <v-icon x-small left color="#00E5FF">mdi-skip-next</v-icon>
+                  Next Server
+                </v-btn>
+                <v-btn icon small dark class="ml-1" title="Close Player" @click="closePlayer">
                   <v-icon small>mdi-close</v-icon>
                 </v-btn>
               </div>
             </div>
+
+            <!-- Server auto-switch / buffering notification banner -->
+            <transition name="fade">
+              <div v-if="serverBufferingNotice" class="server-buffering-banner pa-2 px-3 d-flex align-center justify-space-between">
+                <div class="d-flex align-center">
+                  <v-progress-circular indeterminate size="16" width="2" color="#00E5FF" class="mr-2"></v-progress-circular>
+                  <span class="caption white--text">{{ serverBufferingNotice }}</span>
+                </div>
+                <div>
+                  <v-btn x-small text color="#00E5FF" class="text-none font-weight-bold mr-1" @click="autoSwitchProvider">
+                    Switch Now
+                  </v-btn>
+                  <v-btn x-small text color="grey" class="text-none" @click="dismissBufferingNotice">
+                    Keep Server
+                  </v-btn>
+                </div>
+              </div>
+            </transition>
 
             <!-- Iframe Container -->
             <div class="iframe-container">
@@ -372,7 +401,7 @@
         </v-icon>
         <h3 class="white--text text-h6 font-weight-bold mb-2">Our Queue is Empty</h3>
         <p class="grey--text text-body-2 mb-6 max-w-500 mx-auto">
-          Add movies and series to Our View from any movie details page by clicking the "Our View 🖤" button!
+          Add movies and series to Our View from any movie details page by clicking the "Our View" button!
         </p>
         <v-btn color="#FF4081" rounded depressed dark class="text-none font-weight-bold px-6" to="/movies">
           Browse Movies
@@ -476,7 +505,7 @@
         </p>
 
         <!-- Mood Selector Chips -->
-        <div class="d-flex justify-center align-center flex-wrap gap-2 mb-6">
+        <div class="mood-chips-container my-6">
           <v-chip
             v-for="mood in moodOptions"
             :key="mood.id"
@@ -484,7 +513,7 @@
             :input-value="selectedMood === mood.id"
             color="rgba(255, 64, 129, 0.2)"
             text-color="white"
-            class="font-weight-bold cursor-pointer"
+            class="mood-chip font-weight-bold cursor-pointer"
             @click="selectedMood = mood.id"
           >
             {{ mood.label }}
@@ -510,22 +539,26 @@
       <!-- Winning Result Card -->
       <v-fade-transition>
         <div v-if="pickedMovie" class="dice-result-card pa-4 pa-sm-6 max-w-700 mx-auto">
-          <div class="text-caption rose--text font-weight-bold text-uppercase mb-2" style="color: #FF80AB;">
-            ✨ Tonight's Destiny Pick
+          <div class="destiny-pick-tag mb-3 d-flex align-center">
+            <v-icon small color="#FF80AB" class="mr-1">mdi-sparkles</v-icon>
+            <span class="text-caption rose--text font-weight-bold text-uppercase tracking-wider" style="color: #FF80AB;">
+              Tonight's Destiny Pick
+            </span>
           </div>
-          <div class="d-flex flex-column flex-sm-row gap-4">
+          <div class="d-flex flex-column flex-sm-row">
             <v-img
               :src="pickedMoviePoster"
-              width="130"
-              height="195"
-              class="rounded-lg flex-shrink-0 mx-auto"
+              width="135"
+              max-width="135"
+              height="200"
+              class="destiny-pick-poster rounded-lg flex-shrink-0 mx-auto mr-sm-6 mb-4 mb-sm-0"
               cover
             ></v-img>
             <div class="flex-grow-1 min-w-0">
-              <h3 class="white--text text-h6 font-weight-bold mb-1">
+              <h3 class="white--text text-h6 font-weight-bold mb-1 line-height-tight">
                 {{ pickedMovie.title || pickedMovie.name }}
               </h3>
-              <div class="d-flex align-center mb-2">
+              <div class="d-flex align-center mb-3">
                 <span class="imdb-mini-badge mr-2">IMDb</span>
                 <span class="white--text caption font-weight-bold mr-3">
                   {{ pickedMovie.vote_average ? pickedMovie.vote_average.toFixed(1) : '8.0' }}
@@ -534,16 +567,16 @@
                   {{ (pickedMovie.release_date || pickedMovie.first_air_date || '').slice(0, 4) }}
                 </span>
               </div>
-              <p class="grey--text text--lighten-2 text-caption dice-overview mb-4">
+              <p class="grey--text text--lighten-2 text-caption dice-overview mb-5">
                 {{ pickedMovie.overview }}
               </p>
-              <div class="d-flex align-center flex-wrap gap-2">
+              <div class="d-flex align-center flex-wrap destiny-actions">
                 <v-btn
                   color="#FF4081"
                   rounded
                   depressed
                   dark
-                  class="text-none font-weight-bold px-5"
+                  class="text-none font-weight-bold px-5 mr-3 mb-2"
                   @click="streamPickedMovie"
                 >
                   <v-icon left small>mdi-play</v-icon>
@@ -553,7 +586,7 @@
                   outlined
                   rounded
                   color="white"
-                  class="text-none font-weight-bold"
+                  class="text-none font-weight-bold mb-2"
                   @click="addPickedToOurQueue"
                 >
                   <v-icon left small color="#FF4081">mdi-plus</v-icon>
@@ -729,6 +762,11 @@ export default {
 
       // Sync
       broadcastChannel: null,
+
+      // Auto-switch watchdog
+      serverBufferingNotice: "",
+      bufferingTimer: null,
+      bufferingAutoSwitchTimer: null,
     };
   },
   computed: {
@@ -780,6 +818,16 @@ export default {
     },
     activeProviderId(newVal) {
       localStorage.setItem("preferred_stream_server", newVal);
+      if (this.activeMedia) {
+        this.startBufferingWatchdog();
+      }
+    },
+    activeMedia(newVal) {
+      if (newVal) {
+        this.startBufferingWatchdog();
+      } else {
+        this.clearBufferingWatchdog();
+      }
     },
     nextDateNight: {
       handler() {
@@ -802,6 +850,11 @@ export default {
   mounted() {
     this.startCountdownTimer();
     this.scrollChatToBottom();
+    window.addEventListener("user-identity-changed", (e) => {
+      if (e && e.detail) {
+        this.currentUser = e.detail;
+      }
+    });
   },
   beforeDestroy() {
     if (this.broadcastChannel) {
@@ -811,6 +864,7 @@ export default {
     if (this.countdownInterval) {
       clearInterval(this.countdownInterval);
     }
+    this.clearBufferingWatchdog();
   },
   methods: {
     initSync() {
@@ -1022,6 +1076,47 @@ export default {
     },
     closePlayer() {
       this.activeMedia = null;
+      this.clearBufferingWatchdog();
+    },
+    startBufferingWatchdog() {
+      this.clearBufferingWatchdog();
+      if (!this.activeMedia) return;
+
+      this.bufferingTimer = setTimeout(() => {
+        const nextProvider = this.getNextProvider();
+        this.serverBufferingNotice = `Server buffering? Auto-switching to ${nextProvider.name} in 6s...`;
+        this.bufferingAutoSwitchTimer = setTimeout(() => {
+          this.autoSwitchProvider();
+        }, 6000);
+      }, 14000);
+    },
+    clearBufferingWatchdog() {
+      if (this.bufferingTimer) {
+        clearTimeout(this.bufferingTimer);
+        this.bufferingTimer = null;
+      }
+      if (this.bufferingAutoSwitchTimer) {
+        clearTimeout(this.bufferingAutoSwitchTimer);
+        this.bufferingAutoSwitchTimer = null;
+      }
+      this.serverBufferingNotice = "";
+    },
+    dismissBufferingNotice() {
+      this.clearBufferingWatchdog();
+      this.showToast("Buffering auto-switch dismissed.");
+    },
+    getNextProvider() {
+      const currentIdx = this.providers.findIndex((p) => p.id === this.activeProviderId);
+      const nextIdx = (currentIdx + 1) % this.providers.length;
+      return this.providers[nextIdx];
+    },
+    autoSwitchProvider() {
+      this.clearBufferingWatchdog();
+      const nextProvider = this.getNextProvider();
+      this.activeProviderId = nextProvider.id;
+      localStorage.setItem("preferred_stream_server", nextProvider.id);
+      this.showToast(`Switched server to ${nextProvider.name}`);
+      this.startBufferingWatchdog();
     },
     broadcastSyncPing() {
       const packet = {
@@ -1117,7 +1212,7 @@ export default {
         note: `Dice Pick (${this.selectedMood})`,
         addedBy: this.currentUser,
       });
-      this.showToast(`Added ${this.pickedMovie.title} to Our Queue 🖤`);
+      this.showToast(`Added ${this.pickedMovie.title} to Our Queue`);
     },
     openPlanDialog() {
       if (this.nextDateNight) {
@@ -1500,6 +1595,40 @@ export default {
   border-radius: 20px !important;
   border: 1px solid rgba(255, 64, 129, 0.3) !important;
 }
+
+.server-buffering-banner {
+  background: rgba(0, 30, 60, 0.95);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.3);
+}
+
+.mood-chips-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  row-gap: 14px;
+  max-width: 580px;
+  margin: 0 auto;
+}
+
+.mood-chip {
+  margin: 5px 6px !important;
+}
+
+.destiny-pick-poster {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.line-height-tight {
+  line-height: 1.35;
+}
+
+.gap-1 { gap: 4px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 20px; }
 
 .max-w-500 {
   max-width: 500px;

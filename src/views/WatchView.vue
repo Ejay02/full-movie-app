@@ -59,6 +59,19 @@
             </v-btn-toggle>
           </div>
 
+          <!-- Next Server quick button -->
+          <v-btn
+            small
+            depressed
+            color="rgba(0, 229, 255, 0.15)"
+            class="cyan--text text--accent-2 text-none font-weight-bold mr-2"
+            title="Switch to next stream server"
+            @click="autoSwitchProvider"
+          >
+            <v-icon left x-small color="#00E5FF">mdi-skip-next</v-icon>
+            Next Server
+          </v-btn>
+
           <!-- Quick Episode Drawer toggle (TV Series only) -->
           <v-btn
             v-if="mediaType === 'tv'"
@@ -736,7 +749,7 @@ export default {
       if (this.activeProviderId !== "personal") {
         this.bufferingTimeout = setTimeout(() => {
           this.autoSwitchProvider();
-        }, 20000); 
+        }, 16000); 
       }
     },
     clearBufferingCheck() {
@@ -749,10 +762,17 @@ export default {
       this.clearBufferingCheck();
       this.bufferingTimeout = setTimeout(() => {
         this.autoSwitchProvider();
-      }, 12000);
+      }, 10000);
     },
     handleIframeLoaded() {
+      // Cross-origin iframes load their initial HTML shell in 500ms before video buffers.
+      // Do not prematurely cancel the watchdog; keep a 14s timer to auto-switch if stream hangs.
       this.clearBufferingCheck();
+      if (this.activeProviderId !== "personal") {
+        this.bufferingTimeout = setTimeout(() => {
+          this.autoSwitchProvider();
+        }, 14000);
+      }
     },
     autoSwitchProvider() {
       const currentIdx = this.availableProviders.findIndex(p => p.id === this.activeProviderId);
@@ -761,7 +781,7 @@ export default {
         const nextProvider = this.availableProviders[nextIdx];
         
         // Show unobtrusive toast notification
-        this.switchToastMessage = `Stream stalled. Auto-switching to ${nextProvider.name}...`;
+        this.switchToastMessage = `Buffering: Auto-switched to ${nextProvider.name}`;
         this.showSwitchToast = true;
         if (this.switchToastTimer) clearTimeout(this.switchToastTimer);
         this.switchToastTimer = setTimeout(() => {
@@ -769,6 +789,7 @@ export default {
         }, 4000);
 
         this.activeProviderId = nextProvider.id;
+        this.startBufferingCheck();
       }
     },
 
