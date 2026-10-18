@@ -6,9 +6,12 @@ Vue.use(Vuex);
 const CONTINUE_WATCHING_KEY = "ej-movie-continue-watching";
 const MY_VIEW_KEY = "ej-movie-my-view";
 const WATCHED_KEY = "ej-movie-watched";
+const OUR_VIEW_KEY = "ej-movie-our-view";
+const DATE_NIGHT_KEY = "ej-movie-date-night";
 const MAX_CONTINUE_WATCHING_ITEMS = 12;
 const MAX_MY_VIEW_ITEMS = 60;
 const MAX_WATCHED_ITEMS = 200;
+const MAX_OUR_VIEW_ITEMS = 100;
 
 function loadWatched() {
   if (typeof window === "undefined") {
@@ -91,6 +94,75 @@ function persistMyView(items) {
   window.localStorage.setItem(MY_VIEW_KEY, JSON.stringify(items));
 }
 
+function loadOurView() {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const stored = window.localStorage.getItem(OUR_VIEW_KEY);
+    if (!stored) {
+      return [];
+    }
+
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn("Unable to restore Our View state.", error);
+    return [];
+  }
+}
+
+function persistOurView(items) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(OUR_VIEW_KEY, JSON.stringify(items));
+}
+
+function loadNextDateNight() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const stored = window.localStorage.getItem(DATE_NIGHT_KEY);
+    return stored ? JSON.parse(stored) : null;
+  } catch (error) {
+    console.warn("Unable to restore Date Night state.", error);
+    return null;
+  }
+}
+
+function persistNextDateNight(data) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (!data) {
+    window.localStorage.removeItem(DATE_NIGHT_KEY);
+  } else {
+    window.localStorage.setItem(DATE_NIGHT_KEY, JSON.stringify(data));
+  }
+}
+
+function normalizeOurViewItem(item) {
+  return {
+    id: `${item.mediaType}-${item.mediaId}`,
+    mediaId: item.mediaId,
+    mediaType: item.mediaType,
+    title: item.title,
+    posterPath: item.posterPath || "",
+    backdropPath: item.backdropPath || "",
+    voteAverage: item.voteAverage || 0,
+    genreIds: Array.isArray(item.genreIds) ? item.genreIds : [],
+    note: item.note || "",
+    addedBy: item.addedBy || "Timi",
+    savedAt: item.savedAt || Date.now(),
+  };
+}
+
 function normalizeMyViewItem(item) {
   return {
     id: `${item.mediaType}-${item.mediaId}`,
@@ -141,6 +213,8 @@ export default new Vuex.Store({
     continueWatching: loadContinueWatching(),
     myView: loadMyView(),
     watched: loadWatched(),
+    ourView: loadOurView(),
+    nextDateNight: loadNextDateNight(),
   },
   getters: {
     continueWatchingItems(state) {
@@ -163,6 +237,17 @@ export default new Vuex.Store({
         (item) =>
           item.mediaType === mediaType && String(item.mediaId) === String(mediaId)
       ) || null,
+    ourViewItems(state) {
+      return state.ourView;
+    },
+    ourViewItemByKey: (state) => (mediaType, mediaId) =>
+      state.ourView.find(
+        (item) =>
+          item.mediaType === mediaType && String(item.mediaId) === String(mediaId)
+      ) || null,
+    nextDateNight(state) {
+      return state.nextDateNight;
+    },
     watchedItems(state) {
       return state.watched;
     },
@@ -215,6 +300,38 @@ export default new Vuex.Store({
     REMOVE_FROM_MY_VIEW(state, itemId) {
       state.myView = state.myView.filter((item) => item.id !== itemId);
       persistMyView(state.myView);
+    },
+    SAVE_TO_OUR_VIEW(state, payload) {
+      const item = normalizeOurViewItem(payload);
+      const existingIndex = state.ourView.findIndex((entry) => entry.id === item.id);
+
+      if (existingIndex !== -1) {
+        state.ourView.splice(existingIndex, 1);
+      }
+
+      state.ourView.unshift(item);
+      state.ourView = state.ourView.slice(0, MAX_OUR_VIEW_ITEMS);
+      persistOurView(state.ourView);
+    },
+    UPDATE_OUR_VIEW_NOTE(state, { itemId, note, addedBy }) {
+      const item = state.ourView.find((entry) => entry.id === itemId);
+      if (item) {
+        if (typeof note === "string") item.note = note;
+        if (typeof addedBy === "string") item.addedBy = addedBy;
+        persistOurView(state.ourView);
+      }
+    },
+    REMOVE_FROM_OUR_VIEW(state, itemId) {
+      state.ourView = state.ourView.filter((item) => item.id !== itemId);
+      persistOurView(state.ourView);
+    },
+    SET_NEXT_DATE_NIGHT(state, payload) {
+      state.nextDateNight = payload;
+      persistNextDateNight(state.nextDateNight);
+    },
+    CLEAR_NEXT_DATE_NIGHT(state) {
+      state.nextDateNight = null;
+      persistNextDateNight(null);
     },
     MARK_AS_WATCHED(state, payload) {
       const id = `${payload.mediaType}-${payload.mediaId}`;
@@ -272,6 +389,21 @@ export default new Vuex.Store({
     },
     removeFromMyView({ commit }, itemId) {
       commit("REMOVE_FROM_MY_VIEW", itemId);
+    },
+    saveToOurView({ commit }, payload) {
+      commit("SAVE_TO_OUR_VIEW", payload);
+    },
+    updateOurViewNote({ commit }, payload) {
+      commit("UPDATE_OUR_VIEW_NOTE", payload);
+    },
+    removeFromOurView({ commit }, itemId) {
+      commit("REMOVE_FROM_OUR_VIEW", itemId);
+    },
+    setNextDateNight({ commit }, payload) {
+      commit("SET_NEXT_DATE_NIGHT", payload);
+    },
+    clearNextDateNight({ commit }) {
+      commit("CLEAR_NEXT_DATE_NIGHT");
     },
     markAsWatched({ commit }, payload) {
       commit("MARK_AS_WATCHED", payload);

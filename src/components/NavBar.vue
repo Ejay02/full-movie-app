@@ -64,6 +64,15 @@
         >
           My View
         </v-btn>
+        <v-btn
+          text
+          class="ml-2 nav-link our-view-nav-link"
+          :class="{ 'nav-link--active': isActive('/our-view') }"
+          to="/our-view"
+        >
+          <v-icon left x-small color="#FF4081">mdi-heart</v-icon>
+          Our View
+        </v-btn>
       </div>
       <v-badge
         bordered
@@ -165,6 +174,11 @@ export default {
   color: #ffffff !important;
   background: linear-gradient(135deg, rgba(229, 9, 20, 0.9), rgba(255, 82, 82, 0.65));
   box-shadow: 0 10px 22px rgba(229, 9, 20, 0.28);
+}
+
+.our-view-nav-link.nav-link--active {
+  background: linear-gradient(135deg, rgba(233, 30, 99, 0.9), rgba(255, 64, 129, 0.75)) !important;
+  box-shadow: 0 10px 22px rgba(233, 30, 99, 0.35) !important;
 }
 
 @media (max-width: 760px) {

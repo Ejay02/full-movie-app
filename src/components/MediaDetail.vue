@@ -118,6 +118,21 @@
                   {{ isInMyView ? 'In My View' : 'Add to List' }}
                 </v-btn>
 
+                <!-- Our View Date Night Toggle -->
+                <v-btn
+                  :color="isInOurView ? '#FF4081' : 'white'"
+                  outlined
+                  large
+                  rounded
+                  class="px-6 font-weight-bold text-none our-view-toggle-btn"
+                  @click="toggleOurView"
+                >
+                  <v-icon left :color="isInOurView ? '#FF4081' : ''">
+                    {{ isInOurView ? 'mdi-heart' : 'mdi-heart-outline' }}
+                  </v-icon>
+                  {{ isInOurView ? 'In Our View' : 'Our View' }}
+                </v-btn>
+
                 <!-- Mark as Watched Toggle -->
                 <v-btn
                   :color="isWatched ? '#00E5FF' : 'white'"
@@ -372,6 +387,9 @@ export default {
     isInMyView() {
       return !!this.$store.getters.myViewItemByKey(this.mediaType, this.mediaId);
     },
+    isInOurView() {
+      return !!this.$store.getters.ourViewItemByKey(this.mediaType, this.mediaId);
+    },
     isWatched() {
       return this.$store.getters.isMediaWatched(this.mediaType, this.mediaId);
     },
@@ -525,6 +543,24 @@ export default {
         posterPath: this.media.poster_path,
         backdropPath: this.media.backdrop_path,
         voteAverage: this.media.vote_average,
+      });
+    },
+    toggleOurView() {
+      const itemId = `${this.mediaType}-${this.mediaId}`;
+      if (this.isInOurView) {
+        this.$store.dispatch("removeFromOurView", itemId);
+        return;
+      }
+      this.$store.dispatch("saveToOurView", {
+        mediaType: this.mediaType,
+        mediaId: this.mediaId,
+        title: this.media.title || this.media.name,
+        posterPath: this.media.poster_path,
+        backdropPath: this.media.backdrop_path,
+        voteAverage: this.media.vote_average,
+        genreIds: (this.media.genres || []).map(g => g.id),
+        note: "",
+        addedBy: "Timi",
       });
     },
     async fetchWatchProviders() {
@@ -806,6 +842,14 @@ export default {
 
 .watched-toggle-btn {
   transition: all 0.2s ease !important;
+}
+
+.our-view-toggle-btn {
+  transition: all 0.2s ease !important;
+}
+
+.our-view-toggle-btn:hover {
+  background: rgba(255, 64, 129, 0.12) !important;
 }
 
 /* Cast cards */
