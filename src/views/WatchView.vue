@@ -64,6 +64,14 @@
         </div>
       </div>
 
+      <!-- Server switch notification pill -->
+      <transition name="fade">
+        <div v-if="showSwitchToast" class="theater-switch-toast pa-3 px-4 d-flex align-center">
+          <v-icon small color="#00E5FF" class="mr-2">mdi-server-network</v-icon>
+          <span class="white--text caption font-weight-medium">{{ switchToastMessage }}</span>
+        </div>
+      </transition>
+
       <!-- Playback screen -->
       <div class="theater-playback-area">
         <!-- Native video player -->
@@ -196,13 +204,25 @@ export default {
       autoplayCancelled: false,
 
       // Streaming details
-      activeProviderId: "vidlink",
+      activeProviderId: localStorage.getItem("preferred_stream_server") || "vidlink",
       providers: [
         {
           name: "VidLink",
           id: "vidlink",
           movieUrl: (id) => `https://vidlink.pro/movie/${id}`,
           tvUrl: (id, season, episode) => `https://vidlink.pro/tv/${id}/${season}/${episode}`,
+        },
+        {
+          name: "Embed.su",
+          id: "embed_su",
+          movieUrl: (id) => `https://embed.su/embed/movie/${id}`,
+          tvUrl: (id, season, episode) => `https://embed.su/embed/tv/${id}/${season}/${episode}`,
+        },
+        {
+          name: "2Embed",
+          id: "twoembed",
+          movieUrl: (id) => `https://www.2embed.cc/embed/${id}`,
+          tvUrl: (id, season, episode) => `https://www.2embed.cc/embedtv/${id}&s=${season}&e=${episode}`,
         },
         {
           name: "Vidsrc.to",
@@ -223,6 +243,11 @@ export default {
           tvUrl: (id, season, episode) => `https://vidsrc.me/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`,
         }
       ],
+
+      // Source Switch Toast Notification
+      showSwitchToast: false,
+      switchToastMessage: "",
+      switchToastTimer: null,
 
       // Bottom Tip Auto-dismiss
       showTheaterTip: true,
@@ -311,7 +336,14 @@ export default {
     }
   },
   watch: {
-    activeProviderId() {
+    activeProviderId(newVal) {
+      if (newVal && newVal !== "personal") {
+        try {
+          localStorage.setItem("preferred_stream_server", newVal);
+        } catch (e) {
+          // ignore storage error
+        }
+      }
       this.recordContinueWatching({ force: true });
       this.startBufferingCheck();
     }
@@ -324,6 +356,7 @@ export default {
     this.clearBufferingCheck();
     this.clearCountdown();
     if (this.tipTimer) clearTimeout(this.tipTimer);
+    if (this.switchToastTimer) clearTimeout(this.switchToastTimer);
     window.removeEventListener("keydown", this.handleKeyDown);
   },
   methods: {
@@ -342,8 +375,12 @@ export default {
         this.showTheaterTip = false;
       }, 7000);
 
-      // Default server
-      this.activeProviderId = this.hasPersonalSource ? "personal" : "vidlink";
+      // Default or preferred server from localStorage
+      const savedServer = localStorage.getItem("preferred_stream_server");
+      const validServer = this.providers.some(p => p.id === savedServer);
+      this.activeProviderId = this.hasPersonalSource
+        ? "personal"
+        : (validServer ? savedServer : "vidlink");
 
       try {
         const response = await this.$http.get(`/${this.mediaType}/${this.mediaId}`);
@@ -558,9 +595,18 @@ export default {
     },
     autoSwitchProvider() {
       const currentIdx = this.availableProviders.findIndex(p => p.id === this.activeProviderId);
-      if (currentIdx !== -1 && currentIdx < this.availableProviders.length - 1) {
-        const nextProvider = this.availableProviders[currentIdx + 1];
-        console.log(`Connection stalled. Auto-switching to server: ${nextProvider.name}`);
+      if (currentIdx !== -1 && this.availableProviders.length > 1) {
+        const nextIdx = (currentIdx + 1) % this.availableProviders.length;
+        const nextProvider = this.availableProviders[nextIdx];
+        
+        // Show unobtrusive toast notification
+        this.switchToastMessage = `Stream stalled. Auto-switching to ${nextProvider.name}...`;
+        this.showSwitchToast = true;
+        if (this.switchToastTimer) clearTimeout(this.switchToastTimer);
+        this.switchToastTimer = setTimeout(() => {
+          this.showSwitchToast = false;
+        }, 4000);
+
         this.activeProviderId = nextProvider.id;
       }
     },
@@ -769,6 +815,19 @@ export default {
 .fade-leave-to {
   opacity: 0;
   transform: translateY(10px);
+}
+
+.theater-switch-toast {
+  position: absolute;
+  top: 75px;
+  right: 24px;
+  z-index: 100;
+  background: rgba(14, 18, 30, 0.95);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
 }
 
 .gap-2 {
