@@ -5,8 +5,37 @@ Vue.use(Vuex);
 
 const CONTINUE_WATCHING_KEY = "ej-movie-continue-watching";
 const MY_VIEW_KEY = "ej-movie-my-view";
+const WATCHED_KEY = "ej-movie-watched";
 const MAX_CONTINUE_WATCHING_ITEMS = 12;
 const MAX_MY_VIEW_ITEMS = 60;
+const MAX_WATCHED_ITEMS = 200;
+
+function loadWatched() {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const stored = window.localStorage.getItem(WATCHED_KEY);
+    if (!stored) {
+      return [];
+    }
+
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn("Unable to restore watched media state.", error);
+    return [];
+  }
+}
+
+function persistWatched(items) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(WATCHED_KEY, JSON.stringify(items));
+}
 
 function loadContinueWatching() {
   if (typeof window === "undefined") {
@@ -111,6 +140,7 @@ export default new Vuex.Store({
   state: {
     continueWatching: loadContinueWatching(),
     myView: loadMyView(),
+    watched: loadWatched(),
   },
   getters: {
     continueWatchingItems(state) {
@@ -133,6 +163,14 @@ export default new Vuex.Store({
         (item) =>
           item.mediaType === mediaType && String(item.mediaId) === String(mediaId)
       ) || null,
+    watchedItems(state) {
+      return state.watched;
+    },
+    isMediaWatched: (state) => (mediaType, mediaId) =>
+      state.watched.some(
+        (item) =>
+          item.mediaType === mediaType && String(item.mediaId) === String(mediaId)
+      ),
   },
   mutations: {
     RECORD_CONTINUE_WATCHING(state, payload) {
@@ -178,6 +216,46 @@ export default new Vuex.Store({
       state.myView = state.myView.filter((item) => item.id !== itemId);
       persistMyView(state.myView);
     },
+    MARK_AS_WATCHED(state, payload) {
+      const id = `${payload.mediaType}-${payload.mediaId}`;
+      const existingIndex = state.watched.findIndex((entry) => entry.id === id);
+
+      if (existingIndex !== -1) {
+        state.watched.splice(existingIndex, 1);
+      }
+
+      state.watched.unshift({
+        id,
+        mediaType: payload.mediaType,
+        mediaId: payload.mediaId,
+        title: payload.title || "",
+        watchedAt: Date.now(),
+      });
+      state.watched = state.watched.slice(0, MAX_WATCHED_ITEMS);
+      persistWatched(state.watched);
+    },
+    UNMARK_AS_WATCHED(state, itemId) {
+      state.watched = state.watched.filter((item) => item.id !== itemId);
+      persistWatched(state.watched);
+    },
+    TOGGLE_WATCHED(state, payload) {
+      const id = `${payload.mediaType}-${payload.mediaId}`;
+      const existingIndex = state.watched.findIndex((entry) => entry.id === id);
+
+      if (existingIndex !== -1) {
+        state.watched.splice(existingIndex, 1);
+      } else {
+        state.watched.unshift({
+          id,
+          mediaType: payload.mediaType,
+          mediaId: payload.mediaId,
+          title: payload.title || "",
+          watchedAt: Date.now(),
+        });
+        state.watched = state.watched.slice(0, MAX_WATCHED_ITEMS);
+      }
+      persistWatched(state.watched);
+    },
   },
   actions: {
     recordContinueWatching({ commit }, payload) {
@@ -194,6 +272,15 @@ export default new Vuex.Store({
     },
     removeFromMyView({ commit }, itemId) {
       commit("REMOVE_FROM_MY_VIEW", itemId);
+    },
+    markAsWatched({ commit }, payload) {
+      commit("MARK_AS_WATCHED", payload);
+    },
+    unmarkAsWatched({ commit }, itemId) {
+      commit("UNMARK_AS_WATCHED", itemId);
+    },
+    toggleWatched({ commit }, payload) {
+      commit("TOGGLE_WATCHED", payload);
     },
   },
   modules: {},

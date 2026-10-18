@@ -654,6 +654,11 @@ export default {
     },
     handlePlaybackEnded() {
       this.$store.dispatch("removeContinueWatching", `${this.mediaType}-${this.mediaId}`);
+      this.$store.dispatch("markAsWatched", {
+        mediaType: this.mediaType,
+        mediaId: this.mediaId,
+        title: this.media.title || this.media.name,
+      });
       if (this.mediaType === "tv" && this.hasNextEpisode && !this.autoplayCancelled) {
         this.triggerNextEpisodeNow();
       }

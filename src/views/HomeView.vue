@@ -21,16 +21,11 @@
   <div class="home-page px-2 px-sm-4" v-else>
     <!-- Personal Greeting Banner -->
     <div class="greeting-banner pa-4 pa-sm-5 mb-4 d-flex align-center justify-space-between flex-wrap gap-3">
-      <div class="d-flex align-center">
-        <div class="greeting-avatar-ring mr-3">
-          <v-icon color="#00E5FF">mdi-sparkles</v-icon>
-        </div>
-        <div>
-          <h2 class="white--text text-h6 font-weight-bold mb-0">
-            {{ greetingText }}
-          </h2>
-          <span class="grey--text text-caption">Handcrafted for you with 🖤</span>
-        </div>
+      <div>
+        <h2 class="white--text text-h6 font-weight-bold mb-1">
+          {{ greetingText }}
+        </h2>
+        <span class="grey--text text-caption">Handcrafted for you with 🖤</span>
       </div>
 
       <v-btn
@@ -134,10 +129,11 @@ export default {
   computed: {
     greetingText() {
       const hour = new Date().getHours();
-      if (hour < 12) return "Good morning Timi ☕ Ready for movie night?";
-      if (hour < 17) return "Good afternoon Timi ☀️ Time for a cozy break?";
-      if (hour < 22) return "Good evening Timi ✨ Ready for movie night?";
-      return "Late night cinema Timi 🌙 Popcorn ready?";
+      if (hour >= 5 && hour < 12) return "Good morning Timi ☕ Ready for movie time?";
+      if (hour >= 12 && hour < 14) return "Noon movie time Timi ☀️ Popcorn ready? 🍿";
+      if (hour >= 14 && hour < 18) return "Good afternoon Timi ☀️ Time for a cozy movie break?";
+      if (hour >= 18 && hour < 22) return "Good evening Timi ✨ Movie Night time!";
+      return "Late night cinema Timi 🌙 Popcorn ready? 🍿";
     },
   },
   async mounted() {
@@ -214,13 +210,6 @@ export default {
   border-radius: 18px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(14px);
-}
-
-.greeting-avatar-ring {
-  padding: 8px;
-  border-radius: 14px;
-  background: rgba(0, 229, 255, 0.1);
-  border: 1px solid rgba(0, 229, 255, 0.25);
 }
 
 .surprise-btn {

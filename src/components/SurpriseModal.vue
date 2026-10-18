@@ -14,12 +14,14 @@
 
       <!-- Header -->
       <div class="text-center mb-6">
-        <div class="dice-icon-box mb-3">
-          <v-icon large color="#00E5FF">mdi-dice-5</v-icon>
+        <div class="d-flex flex-column align-center justify-center mb-3">
+          <div class="dice-icon-box mb-3">
+            <v-icon large color="#00E5FF">mdi-dice-5</v-icon>
+          </div>
+          <span class="eyebrow cyan--text text--accent-3 font-weight-bold text-uppercase text-caption tracking-wider">
+            {{ pickerLabel }}
+          </span>
         </div>
-        <span class="eyebrow cyan--text text--accent-3 font-weight-bold text-uppercase text-caption">
-          Movie Night Picker
-        </span>
         <h2 class="text-h5 font-weight-bold white--text mt-1">
           Can't decide what to watch?
         </h2>
@@ -54,7 +56,7 @@
           width="4"
           class="mb-4"
         ></v-progress-circular>
-        <span class="white--text font-weight-medium body-2">Rolling the dice for Timi...</span>
+        <span class="white--text font-weight-medium body-2">Rolling the dice...</span>
       </div>
 
       <!-- Result Card -->
@@ -176,6 +178,12 @@ export default {
         return this.pickedMovie.release_date.split("-")[0];
       }
       return "";
+    },
+    pickerLabel() {
+      const hour = new Date().getHours();
+      if (hour >= 18 || hour < 5) return "Movie Night Picker 🎲";
+      if (hour >= 12 && hour < 14) return "Noon Movie Picker 🎲";
+      return "Movie Time Picker 🎲";
     },
   },
   methods: {

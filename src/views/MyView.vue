@@ -37,6 +37,10 @@
                     </span>
                   </div>
                 </v-img>
+                <span v-if="isWatched(item)" class="watched-badge" title="Already Watched">
+                  <v-icon x-small color="#00E5FF">mdi-check-circle</v-icon>
+                  <span class="watched-text ml-1">Watched</span>
+                </span>
                 <span class="quality-badge">{{ getQualityTag(item) }}</span>
                 <v-btn
                   icon
@@ -127,6 +131,9 @@ export default {
       if (idNum > 1000000) return "CAM";
       if (idNum > 800000) return "HD";
       return idNum % 3 === 0 ? "4K" : "FHD";
+    },
+    isWatched(item) {
+      return this.$store.getters.isMediaWatched(item.mediaType, item.mediaId);
     },
   },
 };
@@ -328,5 +335,25 @@ export default {
   margin-top: 4px;
   color: rgba(255, 255, 255, 0.88);
   font-weight: 600;
+}
+
+.watched-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 5;
+  background: rgba(8, 12, 22, 0.9);
+  border: 1px solid rgba(0, 229, 255, 0.6);
+  color: #00E5FF;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  display: inline-flex;
+  align-items: center;
+  backdrop-filter: blur(6px);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 </style>

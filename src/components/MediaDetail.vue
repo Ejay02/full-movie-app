@@ -117,6 +117,42 @@
                   </v-icon>
                   {{ isInMyView ? 'In My View' : 'Add to List' }}
                 </v-btn>
+
+                <!-- Mark as Watched Toggle -->
+                <v-btn
+                  :color="isWatched ? '#00E5FF' : 'white'"
+                  outlined
+                  large
+                  rounded
+                  class="px-6 font-weight-bold text-none watched-toggle-btn"
+                  @click="toggleWatched"
+                >
+                  <v-icon left :color="isWatched ? '#00E5FF' : ''">
+                    {{ isWatched ? 'mdi-check-circle' : 'mdi-check-circle-outline' }}
+                  </v-icon>
+                  {{ isWatched ? 'Watched' : 'Mark as Watched' }}
+                </v-btn>
+              </div>
+
+              <!-- Where to Stream Officially (Watch Providers) -->
+              <div v-if="watchProviders && watchProviders.length" class="stream-providers-bar mt-4 d-flex align-center flex-wrap gap-2">
+                <span class="grey--text text-caption font-weight-bold mr-2 text-uppercase tracking-wider">
+                  Stream on:
+                </span>
+                <div
+                  v-for="prov in watchProviders"
+                  :key="prov.provider_id"
+                  class="provider-badge-chip d-flex align-center pa-1 px-2"
+                  :title="prov.provider_name"
+                >
+                  <v-img
+                    :src="'https://image.tmdb.org/t/p/w92' + prov.logo_path"
+                    width="20"
+                    height="20"
+                    class="rounded mr-2"
+                  ></v-img>
+                  <span class="white--text text-caption font-weight-medium">{{ prov.provider_name }}</span>
+                </div>
               </div>
 
               <!-- Crew list in banner -->
@@ -212,6 +248,28 @@
               </v-col>
             </v-row>
           </div>
+        <!-- Cast & Characters Section -->
+        <v-card v-if="castMembers && castMembers.length" class="cast-card pa-4 mb-8" flat>
+          <h3 class="section-heading mb-4 text-h6 font-weight-bold white--text">Cast & Characters</h3>
+          <v-slide-group show-arrows class="cast-slide-group">
+            <v-slide-item v-for="actor in castMembers" :key="actor.id">
+              <v-card
+                class="actor-item-card mr-4 my-2 text-center"
+                flat
+                :to="`/actor/${actor.id}`"
+              >
+                <v-avatar size="88" class="mb-2 shadow-elevation">
+                  <v-img :src="actorProfileImage(actor.profile_path)" cover></v-img>
+                </v-avatar>
+                <div class="actor-item-name font-weight-bold text-truncate white--text caption">
+                  {{ actor.name }}
+                </div>
+                <div class="actor-item-character grey--text text-caption text-truncate">
+                  {{ actor.character }}
+                </div>
+              </v-card>
+            </v-slide-item>
+          </v-slide-group>
         </v-card>
 
         <!-- Backdrop Images Gallery -->
@@ -267,6 +325,9 @@ export default {
       selectedEpisode: 1,
       episodes: [],
       loadingEpisodes: false,
+
+      // Official Streaming Providers
+      watchProviders: [],
     };
   },
   computed: {
@@ -308,6 +369,12 @@ export default {
     },
     isInMyView() {
       return !!this.$store.getters.myViewItemByKey(this.mediaType, this.mediaId);
+    },
+    isWatched() {
+      return this.$store.getters.isMediaWatched(this.mediaType, this.mediaId);
+    },
+    castMembers() {
+      return (this.media.credits?.cast || []).slice(0, 15);
     },
     bannerStyle() {
       if (!this.backdropPath) {
@@ -351,6 +418,7 @@ export default {
           `/${this.mediaType}/${this.mediaId}?append_to_response=credits,videos,images`,
         );
         this.media = response.data;
+        this.fetchWatchProviders();
 
         if (this.mediaType === "tv") {
           const querySeason = Number(this.$route.query.season);
@@ -456,7 +524,41 @@ export default {
         backdropPath: this.media.backdrop_path,
         voteAverage: this.media.vote_average,
       });
-    }
+    },
+    async fetchWatchProviders() {
+      try {
+        const response = await this.$http.get(
+          `/${this.mediaType}/${this.mediaId}/watch/providers`
+        );
+        const results = response.data?.results || {};
+        const regional = results.US || results.GB || results.CA || Object.values(results)[0] || {};
+        const streamProviders = regional.flatrate || regional.free || regional.ads || [];
+        const unique = [];
+        const seen = new Set();
+        for (const p of streamProviders) {
+          if (!seen.has(p.provider_id)) {
+            seen.add(p.provider_id);
+            unique.push(p);
+          }
+        }
+        this.watchProviders = unique;
+      } catch (e) {
+        this.watchProviders = [];
+      }
+    },
+    toggleWatched() {
+      this.$store.dispatch("toggleWatched", {
+        mediaType: this.mediaType,
+        mediaId: this.mediaId,
+        title: this.media.title || this.media.name,
+      });
+    },
+    actorProfileImage(path) {
+      if (path) {
+        return `https://image.tmdb.org/t/p/w185/${path}`;
+      }
+      return "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=185";
+    },
   },
 };
 </script>
@@ -690,5 +792,40 @@ export default {
   .hero-details-col {
     padding-left: 0px;
   }
+}
+
+/* Where to stream badges */
+.provider-badge-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+}
+
+.watched-toggle-btn {
+  transition: all 0.2s ease !important;
+}
+
+/* Cast cards */
+.cast-card {
+  background: #070a12 !important;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+}
+
+.actor-item-card {
+  background: transparent !important;
+  width: 105px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.actor-item-card:hover {
+  transform: translateY(-4px);
+}
+
+.shadow-elevation {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.1);
 }
 </style>

@@ -3,6 +3,12 @@
     <div class="poster-frame">
       <v-img :src="posterSrc" alt="" :class="imageClass"></v-img>
 
+      <!-- Watched Badge tag on top left -->
+      <span v-if="isWatched" class="watched-badge" title="Already Watched">
+        <v-icon x-small color="#00E5FF">mdi-check-circle</v-icon>
+        <span class="watched-text ml-1">Watched</span>
+      </span>
+
       <!-- Quality Badge tag on top right -->
       <span v-if="quality" class="quality-badge">{{ quality }}</span>
 
@@ -74,6 +80,9 @@ export default {
     };
   },
   computed: {
+    isWatched() {
+      return this.$store.getters.isMediaWatched(this.mediaType, this.mediaId);
+    },
     iframeSrc() {
       if (!this.trailerKey) {
         return "";
@@ -180,5 +189,25 @@ export default {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.watched-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 5;
+  background: rgba(8, 12, 22, 0.9);
+  border: 1px solid rgba(0, 229, 255, 0.6);
+  color: #00E5FF;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  display: inline-flex;
+  align-items: center;
+  backdrop-filter: blur(6px);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 </style>
