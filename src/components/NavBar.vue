@@ -1,9 +1,9 @@
 <template>
   <nav>
     <v-app-bar app flat dark class="glass-nav px-4">
-      <v-btn text class="ml-2 brand-btn" to="/">
+      <v-btn text class="ml-2 brand-btn text-none" to="/">
         <v-icon class="mr-2">mdi-movie-open</v-icon>
-        TimiStream
+        Timi's Stream
       </v-btn>
 
       <!-- <v-btn text class="ml-2">Contact</v-btn> -->
@@ -144,8 +144,10 @@ export default {
 }
 
 .brand-btn {
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   font-weight: 700;
+  text-transform: none !important;
+  font-size: 1.05rem !important;
 }
 
 .nav-link {

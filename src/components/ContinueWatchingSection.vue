@@ -33,7 +33,7 @@
 
           <div class="continue-content">
             <div class="content-top">
-              <div>
+              <div class="content-titles">
                 <div class="media-label">
                   {{ item.mediaType === "tv" ? "Series" : "Movie" }}
                 </div>
@@ -260,24 +260,37 @@ export default {
   gap: 12px;
 }
 
+.content-titles {
+  flex: 1;
+  min-width: 0;
+}
+
 .media-label {
   color: rgba(255, 255, 255, 0.5);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  margin-bottom: 2px;
 }
 
 .card-title {
   color: rgba(255, 255, 255, 0.94);
-  font-size: 1rem;
+  font-size: 0.98rem;
   font-weight: 600;
-  line-height: 1.3;
-  min-height: 2.6em;
+  line-height: 1.35;
+  height: 2.7em;
+  max-height: 2.7em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 }
 
 .remove-btn {
   margin-top: -6px;
   margin-right: -6px;
+  flex-shrink: 0;
 }
 
 .meta-row {
