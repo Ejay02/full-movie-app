@@ -241,7 +241,6 @@
                 :src="playerUrl"
                 allowfullscreen
                 allow="autoplay; encrypted-media; picture-in-picture"
-                :sandbox="adShield ? 'allow-scripts allow-same-origin allow-forms allow-presentation' : undefined"
                 class="stream-iframe"
               ></iframe>
             </div>
@@ -1106,6 +1105,7 @@ export default {
   mounted() {
     this.startCountdownTimer();
     this.scrollChatToBottom();
+    this.setupPopupProtection();
     window.addEventListener("user-identity-changed", (e) => {
       if (e && e.detail) {
         this.currentUser = e.detail;
@@ -1121,6 +1121,7 @@ export default {
     }
   },
   beforeDestroy() {
+    this.teardownPopupProtection();
     if (this.firebaseUnsubscribers && this.firebaseUnsubscribers.length) {
       this.firebaseUnsubscribers.forEach((unsub) => {
         if (typeof unsub === "function") unsub();
@@ -1486,6 +1487,29 @@ export default {
           ? "🛡️ Ad Shield enabled: Popups and redirects blocked!"
           : "⚠️ Ad Shield disabled."
       );
+    },
+    setupPopupProtection() {
+      if (typeof window === "undefined" || this._popupProtectionActive) return;
+      this._popupProtectionActive = true;
+      this._originalWindowOpen = window.open;
+      const self = this;
+      window.open = function(url, target, features) {
+        if (self.adShield) {
+          if (!url || typeof url !== "string" || url.startsWith("/") || url.includes(window.location.host)) {
+            return self._originalWindowOpen ? self._originalWindowOpen.call(window, url, target, features) : null;
+          }
+          console.warn("[AdShield] Blocked popup window:", url);
+          self.showToast("🛡️ Ad Shield blocked an external popup!");
+          return null;
+        }
+        return self._originalWindowOpen ? self._originalWindowOpen.call(window, url, target, features) : null;
+      };
+    },
+    teardownPopupProtection() {
+      if (typeof window !== "undefined" && this._originalWindowOpen) {
+        window.open = this._originalWindowOpen;
+        this._popupProtectionActive = false;
+      }
     },
     changeServer(providerId) {
       this.clearBufferingWatchdog();

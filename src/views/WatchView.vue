@@ -199,7 +199,6 @@
             v-if="activeIframeUrl"
             allowfullscreen
             allow="autoplay; encrypted-media; picture-in-picture"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
             :src="activeIframeUrl"
             class="theater-iframe"
             @load="handleIframeLoaded"
