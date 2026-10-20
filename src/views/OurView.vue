@@ -4,18 +4,25 @@
     <div class="our-view-hero pa-6 pa-sm-8 mb-6">
       <div class="d-flex align-center justify-space-between flex-wrap gap-4">
         <div>
-          <div class="d-flex align-center mb-2">
-            <span class="couples-pill px-3 py-1 font-weight-bold text-caption mr-2">
-              <v-icon x-small color="#FF4081" class="mr-1">mdi-heart</v-icon>
-              DATE NIGHT & WATCH TOGETHER
-            </span>
-            <span v-if="roomId" class="room-pill px-3 py-1 text-caption grey--text text--lighten-2">
+          <div class="d-flex align-center flex-wrap gap-2 mb-2">
+            <span v-if="roomId" class="room-pill px-3 py-1 text-caption grey--text text--lighten-2 mr-2">
+              <v-icon x-small color="#00E5FF" class="mr-1">mdi-cast-connected</v-icon>
               Room: <strong>{{ roomId }}</strong>
             </span>
+            <div class="d-flex align-center">
+              <span class="grey--text text-caption mr-2 font-weight-bold">I am:</span>
+              <v-btn-toggle v-model="currentUser" mandatory dense class="user-toggle">
+                <v-btn value="Timi" small class="text-none font-weight-bold timi-toggle-btn">
+                  <v-icon x-small left color="#FF4081">mdi-heart</v-icon>
+                  Timi
+                </v-btn>
+                <v-btn value="Ejay" small class="text-none font-weight-bold ejay-toggle-btn">
+                  <v-icon x-small left color="#00E5FF">mdi-star</v-icon>
+                  Ejay
+                </v-btn>
+              </v-btn-toggle>
+            </div>
           </div>
-          <h1 class="page-title white--text text-h4 font-weight-black mb-1">
-            Our View
-          </h1>
           <p class="grey--text text--lighten-2 text-body-2 mb-0">
             For the movies we share together, even when miles apart.
           </p>
@@ -164,8 +171,23 @@
 
               <!-- Stream Server Switcher -->
               <div class="d-flex align-center flex-wrap gap-1">
+                <!-- Ad Shield Chip -->
+                <v-chip
+                  x-small
+                  :color="adShield ? 'rgba(0, 230, 118, 0.2)' : 'rgba(255, 82, 82, 0.2)'"
+                  :class="adShield ? 'green--text text--accent-3' : 'red--text text--accent-2'"
+                  class="font-weight-bold mr-1 cursor-pointer"
+                  title="Click to toggle Ad Shield (blocks popup and redirect ads)"
+                  @click="toggleAdShield"
+                >
+                  <v-icon left x-small :color="adShield ? '#00E676' : '#FF5252'">
+                    {{ adShield ? 'mdi-shield-check' : 'mdi-shield-off' }}
+                  </v-icon>
+                  {{ adShield ? 'Ad Shield: Active' : 'Ad Shield: Off' }}
+                </v-chip>
+
                 <span class="grey--text text-caption mr-1 hidden-xs-only">Server:</span>
-                <v-btn-toggle v-model="activeProviderId" mandatory dense class="server-toggle">
+                <v-btn-toggle v-model="activeProviderId" mandatory dense class="server-toggle" @change="changeServer">
                   <v-btn
                     v-for="prov in providers"
                     :key="prov.id"
@@ -219,6 +241,7 @@
                 :src="playerUrl"
                 allowfullscreen
                 allow="autoplay; encrypted-media; picture-in-picture"
+                :sandbox="adShield ? 'allow-scripts allow-same-origin allow-forms allow-presentation' : undefined"
                 class="stream-iframe"
               ></iframe>
             </div>
@@ -442,27 +465,92 @@
                   Queued by <strong :style="{ color: item.addedBy === 'Timi' ? '#FF80AB' : '#80D8FF' }">{{ item.addedBy || 'Timi' }}</strong>
                 </div>
 
-                <!-- Personal Note field -->
-                <div class="note-box pa-2 rounded mb-2">
-                  <div class="d-flex align-center justify-space-between mb-1">
-                    <span class="text-caption grey--text font-weight-bold">Note for Date Night:</span>
-                    <v-btn icon x-small dark @click="toggleEditNote(item.id)">
-                      <v-icon x-small>{{ editingNoteId === item.id ? 'mdi-check' : 'mdi-pencil' }}</v-icon>
+                <!-- Couple Notes (Chat-Style Bubbles) -->
+                <div class="couple-notes-thread mb-3">
+                  <div class="d-flex align-center justify-space-between mb-2">
+                    <span class="text-caption grey--text text--lighten-1 font-weight-bold">
+                      <v-icon x-small color="#FF80AB" class="mr-1">mdi-chat-processing-outline</v-icon>
+                      Date Night Notes
+                    </span>
+                    <span class="caption grey--text">{{ (item.notes && item.notes.length) || 0 }} notes</span>
+                  </div>
+
+                  <!-- Notes Bubbles Container -->
+                  <div v-if="item.notes && item.notes.length" class="notes-bubbles-list d-flex flex-column gap-2 mb-2">
+                    <div
+                      v-for="note in item.notes"
+                      :key="note.id"
+                      class="d-flex"
+                      :class="note.user === currentUser ? 'justify-end' : 'justify-start'"
+                    >
+                      <div
+                        class="note-bubble pa-2 px-3 rounded-lg"
+                        :class="note.user === currentUser ? 'note-bubble-me' : 'note-bubble-partner'"
+                        :style="{
+                          background: note.user === 'Timi' ? 'rgba(255, 64, 129, 0.18)' : 'rgba(0, 229, 255, 0.16)',
+                          borderLeft: note.user === 'Timi' ? '3px solid #FF4081' : '3px solid #00E5FF',
+                          maxWidth: '85%'
+                        }"
+                      >
+                        <div class="d-flex align-center justify-space-between mb-1 gap-2">
+                          <span
+                            class="font-weight-bold"
+                            style="font-size: 11px;"
+                            :style="{ color: note.user === 'Timi' ? '#FF80AB' : '#00E5FF' }"
+                          >
+                            <v-icon x-small :color="note.user === 'Timi' ? '#FF4081' : '#00E5FF'" class="mr-1">
+                              {{ note.user === 'Timi' ? 'mdi-heart' : 'mdi-star' }}
+                            </v-icon>
+                            {{ note.user }}
+                          </span>
+                          <!-- Read-only protection: only author can delete their own note -->
+                          <v-btn
+                            v-if="note.user === currentUser"
+                            icon
+                            x-small
+                            dark
+                            title="Delete note"
+                            class="ml-1"
+                            @click="deleteNote(item.id, note.id)"
+                          >
+                            <v-icon style="font-size: 13px;" color="grey lighten-1">mdi-close</v-icon>
+                          </v-btn>
+                        </div>
+                        <div class="white--text caption" style="line-height: 1.35; word-break: break-word;">
+                          {{ note.text }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else class="text-caption grey--text font-italic mb-2 px-1">
+                    No notes yet. Add your thoughts for movie night! 👇
+                  </div>
+
+                  <!-- Quick Inline Add Note Field -->
+                  <div class="d-flex align-center gap-1 add-note-input-row">
+                    <v-text-field
+                      :value="newNoteInputs[item.id] || ''"
+                      @input="val => $set(newNoteInputs, item.id, val)"
+                      dense
+                      outlined
+                      dark
+                      hide-details
+                      :placeholder="`Note as ${currentUser}...`"
+                      class="caption-input flex-grow-1"
+                      @keydown.enter="submitNewNote(item.id)"
+                    ></v-text-field>
+                    <v-btn
+                      small
+                      depressed
+                      :color="currentUser === 'Timi' ? '#FF4081' : '#00E5FF'"
+                      :class="currentUser === 'Timi' ? 'white--text' : 'black--text'"
+                      class="font-weight-bold text-none px-3"
+                      @click="submitNewNote(item.id)"
+                    >
+                      <v-icon small left>mdi-send</v-icon>
+                      Add
                     </v-btn>
                   </div>
-                  <div v-if="editingNoteId !== item.id" class="text-caption white--text font-italic">
-                    {{ item.note || 'No special note yet. Tap edit to add one!' }}
-                  </div>
-                  <v-text-field
-                    v-else
-                    v-model="tempNote"
-                    dense
-                    outlined
-                    dark
-                    hide-details
-                    class="caption-input"
-                    @keydown.enter="saveNote(item.id)"
-                  ></v-text-field>
                 </div>
               </div>
 
@@ -498,7 +586,8 @@
 
     <!-- Tab 3: Pass the Remote 🎲 (Couples Dice) -->
     <div v-else-if="activeTab === 2" class="couples-dice-tab py-4">
-      <div class="dice-hero text-center max-w-600 mx-auto mb-8">
+      <!-- Mood Selector Hero (Visible when no pick is active) -->
+      <div v-if="!pickedMovie" class="dice-hero text-center max-w-600 mx-auto mb-8">
         <h2 class="white--text text-h5 font-weight-bold mb-2">Pass the Remote 🎲</h2>
         <p class="grey--text text-body-2">
           Can't agree on what to watch tonight? Pick a vibe and let the dice decide your date night film!
@@ -534,16 +623,58 @@
           <v-icon left>mdi-dice-5</v-icon>
           Roll for Tonight's Movie 🎲
         </v-btn>
+
+        <!-- Custom Vibe / Ask AI Trigger -->
+        <div class="mt-4">
+          <v-btn
+            text
+            small
+            color="#00E5FF"
+            class="text-none font-weight-bold"
+            @click="showCustomVibeDialog = true"
+          >
+            <v-icon left small color="#00E5FF">mdi-creation</v-icon>
+            Custom Vibe / Ask AI ✨
+          </v-btn>
+        </div>
+      </div>
+
+      <!-- Collapsed Mood Bar (Visible when movie is picked to avoid duplicate roll buttons) -->
+      <div v-else class="active-vibe-bar text-center max-w-600 mx-auto mb-4 d-flex align-center justify-center flex-wrap gap-2">
+        <span class="grey--text text-caption">Vibe:</span>
+        <v-chip small color="rgba(255, 64, 129, 0.2)" text-color="white" class="font-weight-bold">
+          {{ selectedMoodLabel }}
+        </v-chip>
+        <v-btn
+          x-small
+          text
+          color="#00E5FF"
+          class="text-none font-weight-bold ml-1"
+          @click="resetDicePick"
+        >
+          <v-icon x-small left color="#00E5FF">mdi-swap-horizontal</v-icon>
+          Change Vibe
+        </v-btn>
       </div>
 
       <!-- Winning Result Card -->
       <v-fade-transition>
         <div v-if="pickedMovie" class="dice-result-card pa-4 pa-sm-6 max-w-700 mx-auto">
-          <div class="destiny-pick-tag mb-3 d-flex align-center">
-            <v-icon small color="#FF80AB" class="mr-1">mdi-sparkles</v-icon>
-            <span class="text-caption rose--text font-weight-bold text-uppercase tracking-wider" style="color: #FF80AB;">
-              Tonight's Destiny Pick
-            </span>
+          <div class="destiny-pick-tag mb-3 d-flex align-center justify-space-between flex-wrap gap-2">
+            <div class="d-flex align-center">
+              <v-icon small color="#FF80AB" class="mr-1">mdi-sparkles</v-icon>
+              <span class="text-caption rose--text font-weight-bold text-uppercase tracking-wider" style="color: #FF80AB;">
+                Tonight's Destiny Pick
+              </span>
+            </div>
+            <div class="d-flex align-center gap-2">
+              <span v-if="diceRolledBy" class="grey--text caption font-weight-medium mr-2">
+                Rolled by <strong :style="{ color: diceRolledBy === 'Timi' ? '#FF4081' : '#00E5FF' }">{{ diceRolledBy }}</strong>
+              </span>
+              <v-btn icon x-small dark title="Close and pick another vibe" @click="resetDicePick">
+                <v-icon small color="grey lighten-1">mdi-close</v-icon>
+              </v-btn>
+            </div>
           </div>
           <div class="d-flex flex-column flex-sm-row">
             <v-img
@@ -567,30 +698,74 @@
                   {{ (pickedMovie.release_date || pickedMovie.first_air_date || '').slice(0, 4) }}
                 </span>
               </div>
-              <p class="grey--text text--lighten-2 text-caption dice-overview mb-5">
+              <p class="grey--text text--lighten-2 text-caption dice-overview mb-3">
                 {{ pickedMovie.overview }}
               </p>
-              <div class="d-flex align-center flex-wrap destiny-actions">
+
+              <!-- Date Night AI Pitch -->
+              <div v-if="aiPitch || loadingAiPitch" class="ai-pitch-box pa-3 rounded-lg mb-4">
+                <div class="d-flex align-center justify-space-between mb-1">
+                  <div class="d-flex align-center">
+                    <v-icon x-small color="#00E5FF" class="mr-1">mdi-creation</v-icon>
+                    <span class="caption font-weight-bold cyan--text text--accent-2">
+                      Date Night AI Concierge:
+                    </span>
+                  </div>
+                  <v-chip x-small outlined color="#00E5FF" class="px-1" style="font-size: 9px; height: 16px;">
+                    Gemini Free
+                  </v-chip>
+                </div>
+                <div v-if="loadingAiPitch" class="d-flex align-center py-1">
+                  <v-progress-circular indeterminate size="12" width="2" color="#00E5FF" class="mr-2"></v-progress-circular>
+                  <span class="caption grey--text font-italic">Consulting AI Concierge for Timi &amp; Ejay...</span>
+                </div>
+                <p v-else class="white--text caption mb-0 font-italic" style="line-height: 1.4;">
+                  "{{ aiPitch }}"
+                </p>
+              </div>
+
+              <div class="d-flex align-center flex-wrap gap-2 destiny-actions">
                 <v-btn
-                  color="#FF4081"
+                  color="#00E676"
                   rounded
                   depressed
                   dark
-                  class="text-none font-weight-bold px-5 mr-3 mb-2"
-                  @click="streamPickedMovie"
+                  class="text-none font-weight-bold px-4 black--text"
+                  @click="acceptDicePick"
                 >
-                  <v-icon left small>mdi-play</v-icon>
-                  Stream in Watch Together
+                  <v-icon left small color="black">mdi-check-bold</v-icon>
+                  Let's Watch!
+                </v-btn>
+                <v-btn
+                  color="rgba(255, 82, 82, 0.2)"
+                  rounded
+                  depressed
+                  dark
+                  class="text-none font-weight-bold px-4 red--text text--lighten-2"
+                  @click="rejectDicePick"
+                >
+                  <v-icon left small color="#FF5252">mdi-close-thick</v-icon>
+                  Roll Again
                 </v-btn>
                 <v-btn
                   outlined
                   rounded
-                  color="white"
-                  class="text-none font-weight-bold mb-2"
+                  color="#00E5FF"
+                  class="text-none font-weight-medium px-3 cyan--text"
+                  @click="resetDicePick"
+                >
+                  <v-icon left small color="#00E5FF">mdi-swap-horizontal</v-icon>
+                  Change Vibe
+                </v-btn>
+                <v-btn
+                  outlined
+                  rounded
+                  color="grey lighten-1"
+                  class="text-none font-weight-medium px-3"
                   @click="addPickedToOurQueue"
                 >
-                  <v-icon left small color="#FF4081">mdi-plus</v-icon>
-                  Save to Our Queue
+                  <v-icon left x-small color="#FF4081">mdi-plus</v-icon>
+                  Save to Queue
                 </v-btn>
               </div>
             </div>
@@ -662,6 +837,52 @@
       </v-card>
     </v-dialog>
 
+    <!-- AI Custom Vibe Dialog -->
+    <v-dialog v-model="showCustomVibeDialog" max-width="500">
+      <v-card class="plan-dialog-card pa-6" dark>
+        <div class="d-flex align-center justify-space-between mb-3">
+          <div class="d-flex align-center">
+            <v-icon color="#00E5FF" class="mr-2">mdi-creation</v-icon>
+            <h3 class="white--text text-h6 font-weight-bold mb-0">Ask AI Concierge</h3>
+          </div>
+          <v-btn icon small dark @click="showCustomVibeDialog = false">
+            <v-icon small>mdi-close</v-icon>
+          </v-btn>
+        </div>
+        <p class="grey--text text-caption mb-4">
+          Describe the exact mood, feeling, or style of movie you and your partner want to watch tonight.
+        </p>
+
+        <v-textarea
+          v-model="customVibeText"
+          outlined
+          dense
+          rows="3"
+          dark
+          placeholder="e.g. A feel-good romance with witty humor and a great soundtrack, or a cozy autumn murder mystery..."
+          color="#00E5FF"
+          class="caption-input mb-3"
+          @keydown.enter.prevent="searchCustomVibe"
+        ></v-textarea>
+
+        <div class="d-flex justify-end gap-2">
+          <v-btn text color="grey" class="text-none font-weight-medium" @click="showCustomVibeDialog = false">
+            Cancel
+          </v-btn>
+          <v-btn
+            depressed
+            color="#00E5FF"
+            class="text-none font-weight-bold black--text px-4"
+            :loading="rollingDice"
+            @click="searchCustomVibe"
+          >
+            <v-icon left small color="black">mdi-sparkles</v-icon>
+            Find Movie ✨
+          </v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
+
     <!-- Global Snackbar Notification -->
     <v-snackbar v-model="snackbar" timeout="3000" top color="rgba(10, 14, 24, 0.95)">
       <div class="d-flex align-center">
@@ -673,16 +894,23 @@
 </template>
 
 <script>
+import firebaseSync from "@/services/firebaseSync";
+import aiConciergeService from "@/services/aiConciergeService";
+
 export default {
   name: "OurView",
   data() {
     return {
       activeTab: 0,
       roomId: this.$route.query.room || "date-night",
-      currentUser: localStorage.getItem("our_view_user") || "Timi",
+      currentUser: (this.$route.query.user === "Ejay" || this.$route.query.user === "Timi")
+        ? this.$route.query.user
+        : (localStorage.getItem("our_view_user") || "Timi"),
       copiedLink: false,
       snackbar: false,
       snackbarText: "",
+      firebaseUnsubscribers: [],
+      adShield: true,
 
       // Active player state
       activeMedia: null,
@@ -718,6 +946,12 @@ export default {
           movieUrl: (id) => `https://autoembed.co/movie/tmdb/${id}`,
           tvUrl: (id, s, e) => `https://autoembed.co/tv/tmdb/${id}-${s}-${e}`,
         },
+        {
+          name: "Vidsrc.me",
+          id: "vidsrc_me",
+          movieUrl: (id) => `https://vidsrc.me/embed/movie?tmdb=${id}`,
+          tvUrl: (id, s, e) => `https://vidsrc.me/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
+        },
       ],
 
       // Live Chat
@@ -738,6 +972,7 @@ export default {
       // Our Queue Notes
       editingNoteId: null,
       tempNote: "",
+      newNoteInputs: {},
 
       // Pass the Remote 🎲
       selectedMood: "romance",
@@ -746,9 +981,16 @@ export default {
         { id: "comedy", label: "Laugh Together 😂", genreIds: [35, 10749] },
         { id: "thriller", label: "Hold Hands Thriller 😱", genreIds: [53, 9648, 27] },
         { id: "animation", label: "Animation Magic ✨", genreIds: [16, 10751, 14] },
+        { id: "action", label: "Action & Sci-Fi 🚀", genreIds: [28, 878] },
+        { id: "mystery", label: "Mind-Bending Mystery 🔍", genreIds: [9648, 878] },
       ],
       rollingDice: false,
       pickedMovie: null,
+      diceRolledBy: null,
+      aiPitch: "",
+      loadingAiPitch: false,
+      customVibeText: "",
+      showCustomVibeDialog: false,
 
       // Date Night Planning
       showPlanDialog: false,
@@ -772,6 +1014,10 @@ export default {
   computed: {
     ourQueue() {
       return this.$store.getters.ourViewItems || [];
+    },
+    selectedMoodLabel() {
+      const mood = this.moodOptions.find((m) => m.id === this.selectedMood);
+      return mood ? mood.label : "Movie Vibe";
     },
     nextDateNight() {
       return this.$store.getters.nextDateNight;
@@ -811,10 +1057,20 @@ export default {
       }
       return `https://image.tmdb.org/t/p/w300/${this.pickedMovie.poster_path}`;
     },
+    currentProviderName() {
+      const prov = this.providers.find((p) => p.id === this.activeProviderId);
+      return prov ? prov.name : this.activeProviderId;
+    },
   },
   watch: {
     currentUser(newVal) {
       localStorage.setItem("our_view_user", newVal);
+      window.dispatchEvent(new CustomEvent("user-identity-changed", { detail: newVal }));
+    },
+    "$route.query.user"(newUser) {
+      if (newUser && (newUser === "Timi" || newUser === "Ejay") && newUser !== this.currentUser) {
+        this.currentUser = newUser;
+      }
     },
     activeProviderId(newVal) {
       localStorage.setItem("preferred_stream_server", newVal);
@@ -855,8 +1111,22 @@ export default {
         this.currentUser = e.detail;
       }
     });
+    // Broadcast presence so peers can sync active media
+    if (this.broadcastChannel) {
+      this.broadcastChannel.postMessage({
+        type: "ROOM_HELLO",
+        roomId: this.roomId,
+        sender: this.currentUser,
+      });
+    }
   },
   beforeDestroy() {
+    if (this.firebaseUnsubscribers && this.firebaseUnsubscribers.length) {
+      this.firebaseUnsubscribers.forEach((unsub) => {
+        if (typeof unsub === "function") unsub();
+      });
+      this.firebaseUnsubscribers = [];
+    }
     if (this.broadcastChannel) {
       this.broadcastChannel.close();
     }
@@ -868,7 +1138,87 @@ export default {
   },
   methods: {
     initSync() {
-      // 1. BroadcastChannel for fast same-browser multi-tab sync
+      // 1. Firebase Realtime Cloud Synchronization
+      if (firebaseSync.isConfigured()) {
+        const unsubChat = firebaseSync.subscribeToChat((remoteMessages) => {
+          if (remoteMessages && Array.isArray(remoteMessages)) {
+            this.messages = remoteMessages;
+            this.saveChatHistory();
+            this.scrollChatToBottom();
+          }
+        }, this.roomId);
+
+        const unsubReaction = firebaseSync.subscribeToReaction((reaction) => {
+          if (reaction && reaction.symbol && reaction.sender !== this.currentUser) {
+            if (Date.now() - (reaction.timestamp || 0) < 6000) {
+              this.triggerFloatingEmoji(reaction.symbol);
+            }
+          }
+        }, this.roomId);
+
+        const unsubMedia = firebaseSync.subscribeToActiveMedia((media) => {
+          if (media) {
+            const isFreshPlayback = media.timestamp && (Date.now() - media.timestamp < 45000);
+            const hasMediaChanged = !this.activeMedia || this.activeMedia.mediaId !== media.mediaId;
+            const hasProviderChanged = media.providerId && this.activeProviderId !== media.providerId;
+            if (hasMediaChanged || hasProviderChanged) {
+              this.activeMedia = media;
+              if (media.providerId && this.activeProviderId !== media.providerId) {
+                this.activeProviderId = media.providerId;
+                const prov = this.providers.find((p) => p.id === media.providerId);
+                this.showToast(`Partner switched server to ${prov ? prov.name : media.providerId}! 🍿`);
+              } else if (hasMediaChanged && isFreshPlayback) {
+                this.showToast(`Partner streaming: ${media.title || 'Movie'}! 🍿`);
+              }
+              if (isFreshPlayback) {
+                this.activeTab = 0;
+              }
+              try {
+                localStorage.setItem(`our-view-active-media-${this.roomId}`, JSON.stringify(media));
+              } catch (e) {
+                // ignore
+              }
+            }
+          } else if (!media && this.activeMedia) {
+            this.activeMedia = null;
+            this.clearBufferingWatchdog();
+            try {
+              localStorage.removeItem(`our-view-active-media-${this.roomId}`);
+            } catch (e) {
+              // ignore
+            }
+          }
+        }, this.roomId);
+
+        const unsubDice = firebaseSync.subscribeToDice((diceData) => {
+          if (!diceData) return;
+          if (diceData.status === "pending" && diceData.movie) {
+            this.pickedMovie = diceData.movie;
+            this.diceRolledBy = diceData.rolledBy;
+            this.rollingDice = false;
+            this.activeTab = 2;
+            if (diceData.rolledBy !== this.currentUser) {
+              this.showToast(`${diceData.rolledBy} rolled the dice: ${diceData.movie.title || diceData.movie.name}! 🎲`);
+            }
+            this.generateAiPitch(this.pickedMovie);
+          } else if (diceData.status === "rejected" && diceData.votedBy !== this.currentUser) {
+            this.rollingDice = true;
+            this.showToast(`${diceData.votedBy} voted ❌ to re-roll! Rolling again... 🎲`);
+            // Note: Do not call this.rollCouplesDice() here to prevent race condition. The partner who rejected is rolling.
+          } else if (diceData.status === "accepted" && diceData.votedBy !== this.currentUser) {
+            this.showToast(`${diceData.votedBy} approved ✔️ Let's Watch! 🍿`);
+          } else if (diceData.status === "reset") {
+            this.pickedMovie = null;
+            this.diceRolledBy = null;
+            this.rollingDice = false;
+            this.aiPitch = "";
+          }
+        }, this.roomId);
+
+        this.firebaseUnsubscribers.push(unsubChat, unsubReaction, unsubMedia, unsubDice);
+      }
+
+      // 2. BroadcastChannel for fast same-browser multi-tab sync
       if (typeof window !== "undefined" && "BroadcastChannel" in window) {
         try {
           this.broadcastChannel = new BroadcastChannel("our-view-sync");
@@ -880,7 +1230,7 @@ export default {
         }
       }
 
-      // 2. Storage event listener for cross-window / tab storage events
+      // 3. Storage event listener for cross-window / tab storage events
       if (typeof window !== "undefined") {
         window.addEventListener("storage", this.handleStorageEvent);
       }
@@ -897,8 +1247,63 @@ export default {
         this.triggerFloatingEmoji(data.payload.symbol);
       } else if (data.type === "PLAY_MEDIA") {
         this.activeMedia = data.payload;
+        if (data.payload && data.payload.providerId && this.activeProviderId !== data.payload.providerId) {
+          this.activeProviderId = data.payload.providerId;
+        }
         this.activeTab = 0;
-        this.showToast(`${data.sender || 'Partner'} started streaming ${data.payload.title}!`);
+        try {
+          localStorage.setItem(`our-view-active-media-${this.roomId}`, JSON.stringify(data.payload));
+        } catch (e) {
+          // ignore
+        }
+        this.showToast(`${data.sender || 'Partner'} started streaming ${data.payload.title}! 🍿`);
+      } else if (data.type === "CLOSE_MEDIA") {
+        this.activeMedia = null;
+        this.clearBufferingWatchdog();
+        try {
+          localStorage.removeItem(`our-view-active-media-${this.roomId}`);
+        } catch (e) {
+          // ignore
+        }
+      } else if (data.type === "ROOM_HELLO") {
+        if (this.activeMedia) {
+          const packet = {
+            type: "PLAY_MEDIA",
+            roomId: this.roomId,
+            sender: this.currentUser,
+            payload: this.activeMedia,
+          };
+          if (this.broadcastChannel) {
+            this.broadcastChannel.postMessage(packet);
+          }
+        }
+      } else if (data.type === "DICE_ROLLED") {
+        this.pickedMovie = data.payload.movie;
+        this.diceRolledBy = data.payload.rolledBy;
+        this.rollingDice = false;
+        this.activeTab = 2;
+        this.showToast(`${data.sender || 'Partner'} rolled the dice: ${data.payload.movie.title || data.payload.movie.name}! 🎲`);
+        this.generateAiPitch(this.pickedMovie);
+      } else if (data.type === "DICE_ACCEPTED") {
+        this.activeMedia = data.payload;
+        if (data.payload && data.payload.providerId && this.activeProviderId !== data.payload.providerId) {
+          this.activeProviderId = data.payload.providerId;
+        }
+        this.activeTab = 0;
+        try {
+          localStorage.setItem(`our-view-active-media-${this.roomId}`, JSON.stringify(data.payload));
+        } catch (e) {
+          // ignore
+        }
+        this.showToast(`${data.sender || 'Partner'} voted ✔️ Let's Watch! Streaming ${data.payload.title}! 🍿`);
+      } else if (data.type === "DICE_REJECTED") {
+        this.rollingDice = true;
+        this.showToast(`${data.sender || 'Partner'} voted ❌ to re-roll! Rolling again... 🎲`);
+      } else if (data.type === "DICE_RESET") {
+        this.pickedMovie = null;
+        this.diceRolledBy = null;
+        this.rollingDice = false;
+        this.aiPitch = "";
       } else if (data.type === "SYNC_PING") {
         this.showToast(`${data.sender || 'Partner'} requested a playback sync.`);
       }
@@ -918,6 +1323,14 @@ export default {
           if (item.roomId === this.roomId) {
             this.triggerFloatingEmoji(item.symbol);
           }
+        } catch (e) {
+          // ignore parsing error
+        }
+      }
+      if (event.key === "our-view-last-sync-event" && event.newValue) {
+        try {
+          const packet = JSON.parse(event.newValue);
+          this.handleSyncMessage(packet);
         } catch (e) {
           // ignore parsing error
         }
@@ -962,6 +1375,8 @@ export default {
         payload: messageObj,
       };
 
+      firebaseSync.sendChatMessage(messageObj, this.roomId);
+
       if (this.broadcastChannel) {
         this.broadcastChannel.postMessage(packet);
       }
@@ -980,6 +1395,8 @@ export default {
         sender: this.currentUser,
         payload: { symbol },
       };
+
+      firebaseSync.sendReaction(symbol, this.currentUser, this.roomId);
 
       if (this.broadcastChannel) {
         this.broadcastChannel.postMessage(packet);
@@ -1027,7 +1444,12 @@ export default {
       this.loadChatHistory();
     },
     copyRoomInvite() {
-      const fullUrl = `${window.location.origin}/our-view?room=${encodeURIComponent(this.roomId)}`;
+      let fullUrl = `${window.location.origin}/our-view?room=${encodeURIComponent(this.roomId)}`;
+      if (this.activeMedia) {
+        fullUrl += `&mediaType=${encodeURIComponent(this.activeMedia.mediaType)}&id=${encodeURIComponent(this.activeMedia.mediaId)}&title=${encodeURIComponent(this.activeMedia.title || "")}`;
+        if (this.activeMedia.season) fullUrl += `&season=${encodeURIComponent(this.activeMedia.season)}`;
+        if (this.activeMedia.episode) fullUrl += `&episode=${encodeURIComponent(this.activeMedia.episode)}`;
+      }
       if (navigator.clipboard) {
         navigator.clipboard.writeText(fullUrl).then(() => {
           this.copiedLink = true;
@@ -1047,17 +1469,65 @@ export default {
           title: title || "Movie",
           season: this.$route.query.season || 1,
           episode: this.$route.query.episode || 1,
+          timestamp: Date.now(),
         };
+        try {
+          localStorage.setItem(`our-view-active-media-${this.roomId}`, JSON.stringify(this.activeMedia));
+        } catch (e) {
+          // ignore
+        }
         this.activeTab = 0;
       }
+    },
+    toggleAdShield() {
+      this.adShield = !this.adShield;
+      this.showToast(
+        this.adShield
+          ? "🛡️ Ad Shield enabled: Popups and redirects blocked!"
+          : "⚠️ Ad Shield disabled."
+      );
+    },
+    changeServer(providerId) {
+      this.clearBufferingWatchdog();
+      this.activeProviderId = providerId;
+      localStorage.setItem("preferred_stream_server", providerId);
+
+      if (this.activeMedia) {
+        this.activeMedia = {
+          ...this.activeMedia,
+          providerId,
+        };
+        firebaseSync.setActiveMedia(this.activeMedia, this.roomId);
+
+        const packet = {
+          type: "PLAY_MEDIA",
+          roomId: this.roomId,
+          sender: this.currentUser,
+          payload: this.activeMedia,
+        };
+        if (this.broadcastChannel) {
+          this.broadcastChannel.postMessage(packet);
+        }
+        try {
+          localStorage.setItem(`our-view-active-media-${this.roomId}`, JSON.stringify(this.activeMedia));
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      const prov = this.providers.find((p) => p.id === providerId);
+      this.showToast(`Switched server to ${prov ? prov.name : providerId}`);
+      this.startBufferingWatchdog();
     },
     streamQueueItem(item) {
       this.activeMedia = {
         mediaType: item.mediaType,
         mediaId: item.mediaId,
         title: item.title,
+        providerId: this.activeProviderId,
         season: 1,
         episode: 1,
+        timestamp: Date.now(),
       };
       this.activeTab = 0;
 
@@ -1068,8 +1538,16 @@ export default {
         sender: this.currentUser,
         payload: this.activeMedia,
       };
+      firebaseSync.setActiveMedia(this.activeMedia, this.roomId);
+
       if (this.broadcastChannel) {
         this.broadcastChannel.postMessage(packet);
+      }
+      try {
+        localStorage.setItem(`our-view-active-media-${this.roomId}`, JSON.stringify(this.activeMedia));
+        localStorage.setItem("our-view-last-sync-event", JSON.stringify(packet));
+      } catch (e) {
+        // ignore
       }
 
       this.showToast(`Started streaming ${item.title} together! 🍿`);
@@ -1077,6 +1555,25 @@ export default {
     closePlayer() {
       this.activeMedia = null;
       this.clearBufferingWatchdog();
+      firebaseSync.closeActiveMedia(this.roomId);
+      try {
+        localStorage.removeItem(`our-view-active-media-${this.roomId}`);
+      } catch (e) {
+        // ignore
+      }
+      const packet = {
+        type: "CLOSE_MEDIA",
+        roomId: this.roomId,
+        sender: this.currentUser,
+      };
+      if (this.broadcastChannel) {
+        this.broadcastChannel.postMessage(packet);
+      }
+      try {
+        localStorage.setItem("our-view-last-sync-event", JSON.stringify(packet));
+      } catch (e) {
+        // ignore
+      }
     },
     startBufferingWatchdog() {
       this.clearBufferingWatchdog();
@@ -1084,11 +1581,11 @@ export default {
 
       this.bufferingTimer = setTimeout(() => {
         const nextProvider = this.getNextProvider();
-        this.serverBufferingNotice = `Server buffering? Auto-switching to ${nextProvider.name} in 6s...`;
+        this.serverBufferingNotice = `Server buffering? Auto-switching to ${nextProvider.name} in 4s...`;
         this.bufferingAutoSwitchTimer = setTimeout(() => {
           this.autoSwitchProvider();
-        }, 6000);
-      }, 14000);
+        }, 4000);
+      }, 6000);
     },
     clearBufferingWatchdog() {
       if (this.bufferingTimer) {
@@ -1111,12 +1608,8 @@ export default {
       return this.providers[nextIdx];
     },
     autoSwitchProvider() {
-      this.clearBufferingWatchdog();
       const nextProvider = this.getNextProvider();
-      this.activeProviderId = nextProvider.id;
-      localStorage.setItem("preferred_stream_server", nextProvider.id);
-      this.showToast(`Switched server to ${nextProvider.name}`);
-      this.startBufferingWatchdog();
+      this.changeServer(nextProvider.id);
     },
     broadcastSyncPing() {
       const packet = {
@@ -1139,6 +1632,21 @@ export default {
       this.$store.dispatch("removeFromOurView", itemId);
       this.showToast("Removed from Our Queue.");
     },
+    submitNewNote(itemId) {
+      const text = (this.newNoteInputs[itemId] || "").trim();
+      if (!text) return;
+      this.$store.dispatch("addOurViewNote", {
+        itemId,
+        text,
+        user: this.currentUser,
+      });
+      this.$set(this.newNoteInputs, itemId, "");
+      this.showToast(`Note added as ${this.currentUser}! 💬`);
+    },
+    deleteNote(itemId, noteId) {
+      this.$store.dispatch("removeOurViewNote", { itemId, noteId });
+      this.showToast("Note removed.");
+    },
     toggleEditNote(itemId) {
       if (this.editingNoteId === itemId) {
         this.saveNote(itemId);
@@ -1157,19 +1665,114 @@ export default {
       this.editingNoteId = null;
       this.showToast("Note updated!");
     },
+    resetDicePick() {
+      this.pickedMovie = null;
+      this.diceRolledBy = null;
+      this.rollingDice = false;
+      this.aiPitch = "";
+      firebaseSync.resetDice(this.roomId);
+      if (this.broadcastChannel) {
+        this.broadcastChannel.postMessage({
+          type: "DICE_RESET",
+          roomId: this.roomId,
+          sender: this.currentUser,
+        });
+      }
+      this.showToast("Vibe cleared — pick a new mood and roll! 🎲");
+    },
+    async generateAiPitch(movie) {
+      if (!movie) return;
+      this.loadingAiPitch = true;
+      this.aiPitch = "";
+      try {
+        const pitch = await aiConciergeService.generateDateNightPitch(movie);
+        this.aiPitch = pitch;
+      } catch (err) {
+        console.warn("AI pitch generation error:", err);
+      } finally {
+        this.loadingAiPitch = false;
+      }
+    },
+    async searchCustomVibe() {
+      const query = (this.customVibeText || "").trim();
+      if (!query) return;
+      this.rollingDice = true;
+      this.showCustomVibeDialog = false;
+      this.aiPitch = "";
+      try {
+        const response = await this.$http.get(
+          `/search/movie?query=${encodeURIComponent(query)}&page=1`
+        );
+        const candidates = (response.data?.results || []).filter(
+          (m) => m.poster_path && m.overview && m.vote_average >= 6.0
+        );
+        if (candidates.length) {
+          this.pickedMovie = candidates[0];
+          this.diceRolledBy = this.currentUser;
+          const packet = {
+            type: "DICE_ROLLED",
+            roomId: this.roomId,
+            sender: this.currentUser,
+            payload: {
+              movie: this.pickedMovie,
+              rolledBy: this.currentUser,
+            },
+          };
+          firebaseSync.broadcastDiceRoll(this.pickedMovie, this.currentUser, this.roomId);
+          if (this.broadcastChannel) {
+            this.broadcastChannel.postMessage(packet);
+          }
+          this.generateAiPitch(this.pickedMovie);
+          this.showToast(`AI found: ${this.pickedMovie.title}! ✨`);
+        } else {
+          this.showToast("No matches found for that vibe. Try another! 🍿");
+        }
+      } catch (e) {
+        console.error("Custom vibe search failed:", e);
+      } finally {
+        this.rollingDice = false;
+      }
+    },
     async rollCouplesDice() {
       this.rollingDice = true;
+      this.aiPitch = "";
       try {
         const moodObj = this.moodOptions.find((m) => m.id === this.selectedMood) || this.moodOptions[0];
         const genreId = moodObj.genreIds[Math.floor(Math.random() * moodObj.genreIds.length)];
         const randomPage = Math.floor(Math.random() * 3) + 1;
+        const currentYear = new Date().getFullYear();
 
+        // Modern movies only (2015 to current year), high rating & popularity
         const response = await this.$http.get(
-          `/discover/movie?with_genres=${genreId}&sort_by=vote_average.desc&vote_count.gte=300&page=${randomPage}`
+          `/discover/movie?with_genres=${genreId}&sort_by=popularity.desc&vote_average.gte=6.8&vote_count.gte=400&primary_release_date.gte=2015-01-01&primary_release_date.lte=${currentYear}-12-31&page=${randomPage}`
         );
         const candidates = (response.data?.results || []).filter((m) => m.poster_path && m.overview);
         if (candidates.length) {
           this.pickedMovie = candidates[Math.floor(Math.random() * candidates.length)];
+          this.diceRolledBy = this.currentUser;
+
+          const packet = {
+            type: "DICE_ROLLED",
+            roomId: this.roomId,
+            sender: this.currentUser,
+            payload: {
+              movie: this.pickedMovie,
+              rolledBy: this.currentUser,
+            },
+          };
+          firebaseSync.broadcastDiceRoll(this.pickedMovie, this.currentUser, this.roomId);
+
+          if (this.broadcastChannel) {
+            this.broadcastChannel.postMessage(packet);
+          }
+          try {
+            localStorage.setItem("our-view-last-sync-event", JSON.stringify(packet));
+          } catch (e) {
+            // ignore
+          }
+
+          // Generate AI Pitch
+          this.generateAiPitch(this.pickedMovie);
         }
       } catch (e) {
         console.error("Dice roll failed:", e);
@@ -1179,26 +1782,65 @@ export default {
         }, 600);
       }
     },
-    streamPickedMovie() {
+    acceptDicePick() {
       if (!this.pickedMovie) return;
       this.activeMedia = {
         mediaType: "movie",
         mediaId: this.pickedMovie.id,
-        title: this.pickedMovie.title,
+        title: this.pickedMovie.title || this.pickedMovie.name,
+        providerId: this.activeProviderId,
+        timestamp: Date.now(),
       };
       this.activeTab = 0;
 
       const packet = {
-        type: "PLAY_MEDIA",
+        type: "DICE_ACCEPTED",
         roomId: this.roomId,
         sender: this.currentUser,
         payload: this.activeMedia,
       };
+
+      firebaseSync.voteDiceDecision("accepted", this.currentUser, this.activeMedia, this.roomId);
+
       if (this.broadcastChannel) {
         this.broadcastChannel.postMessage(packet);
       }
+      try {
+        localStorage.setItem(`our-view-active-media-${this.roomId}`, JSON.stringify(this.activeMedia));
+        localStorage.setItem("our-view-last-sync-event", JSON.stringify(packet));
+      } catch (e) {
+        // ignore
+      }
 
-      this.showToast(`Streaming ${this.pickedMovie.title} in Watch Together! 🍿`);
+      this.showToast(`✔️ Approved! Streaming ${this.pickedMovie.title || this.pickedMovie.name} together! 🍿`);
+    },
+    rejectDicePick() {
+      this.rollingDice = true;
+      this.aiPitch = "";
+      this.diceRolledBy = this.currentUser;
+
+      const packet = {
+        type: "DICE_REJECTED",
+        roomId: this.roomId,
+        sender: this.currentUser,
+      };
+
+      firebaseSync.voteDiceDecision("rejected", this.currentUser, null, this.roomId);
+
+      if (this.broadcastChannel) {
+        this.broadcastChannel.postMessage(packet);
+      }
+      try {
+        localStorage.setItem("our-view-last-sync-event", JSON.stringify(packet));
+      } catch (e) {
+        // ignore
+      }
+
+      this.showToast("❌ Rolling the dice again... 🎲");
+      this.rollCouplesDice();
+    },
+    streamPickedMovie() {
+      this.acceptDicePick();
     },
     addPickedToOurQueue() {
       if (!this.pickedMovie) return;
@@ -1644,5 +2286,43 @@ export default {
 
 .cursor-pointer {
   cursor: pointer;
+}
+
+/* Couple Notes Bubbles in Queue */
+.couple-notes-thread {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.notes-bubbles-list {
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.note-bubble {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: all 0.2s ease;
+}
+
+.note-bubble-me {
+  border-bottom-right-radius: 2px !important;
+}
+
+.note-bubble-partner {
+  border-bottom-left-radius: 2px !important;
+}
+
+.add-note-input-row .v-input__control {
+  min-height: 32px !important;
+}
+
+/* AI Pitch Box */
+.ai-pitch-box {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(13, 20, 38, 0.7) 100%);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-left: 3px solid #00E5FF;
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="search-page-container mx-3 mt-4">
+  <div class="search-page-container mx-3 mt-4 mb-16 pb-12">
     <div class="search-header-area">
       <p class="eyebrow mb-1">Explore Cinema</p>
       <h2 class="page-title mb-4">Search Results</h2>
@@ -57,9 +57,9 @@
             md="3"
             lg="2"
             xl="2"
-            class="d-flex"
+            class="d-flex justify-center"
           >
-            <div class="w-100 flex-grow-1">
+            <div class="search-card-wrapper w-100 flex-grow-1">
               <MovieCard
                 v-if="item.media_type === 'movie'"
                 :movie="item"
@@ -231,5 +231,10 @@ export default {
 
 .w-100 {
   width: 100%;
+}
+
+.search-card-wrapper {
+  max-width: 220px;
+  margin: 0 auto;
 }
 </style>

@@ -267,7 +267,20 @@ export default {
       }
     },
     copyInviteLink() {
-      const url = `${window.location.origin}/our-view?room=date-night`;
+      let url = `${window.location.origin}/our-view?room=date-night`;
+      try {
+        const saved = localStorage.getItem("our-view-active-media-date-night");
+        if (saved) {
+          const media = JSON.parse(saved);
+          if (media && media.mediaType && media.mediaId) {
+            url += `&mediaType=${encodeURIComponent(media.mediaType)}&id=${encodeURIComponent(media.mediaId)}&title=${encodeURIComponent(media.title || "")}`;
+            if (media.season) url += `&season=${encodeURIComponent(media.season)}`;
+            if (media.episode) url += `&episode=${encodeURIComponent(media.episode)}`;
+          }
+        }
+      } catch (e) {
+        // ignore parse error
+      }
       if (navigator.clipboard) {
         navigator.clipboard.writeText(url).then(() => {
           this.showToast("Date Night invite link copied! 🥂");
@@ -378,6 +391,14 @@ export default {
   .nav-links {
     overflow-x: auto;
     max-width: 55vw;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .nav-links::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 }
 </style>

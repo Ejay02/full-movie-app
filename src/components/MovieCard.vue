@@ -16,11 +16,56 @@
       />
       <v-card-title class="subtitle-2 card-title pa-4">
         <div class="title-text">{{ movie.title }}</div>
-        <v-btn icon class="watchlist-btn" @click.stop="toggleMyView">
-          <v-icon :color="isInMyView ? 'light-green accent-3' : ''">
-            {{ isInMyView ? "mdi-check" : "mdi-plus" }}
-          </v-icon>
-        </v-btn>
+        <v-menu
+          offset-y
+          top
+          transition="scale-transition"
+          rounded="lg"
+          content-class="card-views-dropdown"
+        >
+          <template #activator="{ on, attrs }">
+            <v-btn
+              icon
+              class="watchlist-btn"
+              v-bind="attrs"
+              v-on="on"
+              title="Add to My View or Our Queue"
+              @click.stop
+            >
+              <v-icon :color="isInOurView ? '#FF4081' : (isInMyView ? 'light-green accent-3' : '')">
+                {{ (isInMyView && isInOurView) ? 'mdi-check-all' : (isInOurView ? 'mdi-heart' : (isInMyView ? 'mdi-check' : 'mdi-plus')) }}
+              </v-icon>
+            </v-btn>
+          </template>
+
+          <v-list dark dense class="card-add-menu-list py-1">
+            <v-list-item @click.stop="toggleMyView">
+              <v-list-item-icon class="mr-2 my-1">
+                <v-icon small :color="isInMyView ? 'light-green accent-3' : 'grey lighten-1'">
+                  {{ isInMyView ? 'mdi-check-circle' : 'mdi-plus-circle-outline' }}
+                </v-icon>
+              </v-list-item-icon>
+              <v-list-item-content class="py-1">
+                <v-list-item-title class="caption font-weight-bold">
+                  {{ isInMyView ? 'In My View' : 'My View' }}
+                </v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
+
+            <v-list-item @click.stop="toggleOurView">
+              <v-list-item-icon class="mr-2 my-1">
+                <v-icon small :color="isInOurView ? '#FF4081' : 'grey lighten-1'">
+                  {{ isInOurView ? 'mdi-heart' : 'mdi-heart-outline' }}
+                </v-icon>
+              </v-list-item-icon>
+              <v-list-item-content class="py-1">
+                <v-list-item-title class="caption font-weight-bold" :style="{ color: isInOurView ? '#FF80AB' : '' }">
+                  {{ isInOurView ? 'In Our Queue' : 'Our Queue' }}
+                </v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </v-card-title>
       <v-card-text class="content-area">
         <div class="ratings-row">
@@ -67,6 +112,9 @@ export default {
     },
     isInMyView() {
       return !!this.$store.getters.myViewItemByKey("movie", this.movie.id);
+    },
+    isInOurView() {
+      return !!this.$store.getters.ourViewItemByKey("movie", this.movie.id);
     },
     qualityTag() {
       if (!this.movie.release_date) return "HD";
@@ -117,6 +165,27 @@ export default {
         voteAverage: this.movie.vote_average,
         genreIds: this.movie.genre_ids,
         releaseDate: this.movie.release_date,
+      });
+    },
+    toggleOurView() {
+      const itemId = `movie-${this.movie.id}`;
+
+      if (this.isInOurView) {
+        this.$store.dispatch("removeFromOurView", itemId);
+        return;
+      }
+
+      const activeUser = localStorage.getItem("our_view_user") || "Timi";
+      this.$store.dispatch("saveToOurView", {
+        mediaType: "movie",
+        mediaId: this.movie.id,
+        title: this.movie.title,
+        posterPath: this.movie.poster_path,
+        backdropPath: this.movie.backdrop_path,
+        voteAverage: this.movie.vote_average,
+        genreIds: this.movie.genre_ids,
+        note: "",
+        addedBy: activeUser,
       });
     },
   },
@@ -239,5 +308,13 @@ export default {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+.card-add-menu-list {
+  background: rgba(14, 18, 30, 0.96) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  backdrop-filter: blur(14px);
+  min-width: 155px;
 }
 </style>

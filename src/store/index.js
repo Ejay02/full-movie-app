@@ -1,5 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
+import firebaseSync from "@/services/firebaseSync";
 
 Vue.use(Vuex);
 
@@ -148,6 +149,22 @@ function persistNextDateNight(data) {
 }
 
 function normalizeOurViewItem(item) {
+  let notes = [];
+  if (Array.isArray(item.notes)) {
+    notes = item.notes;
+  } else if (item.notes && typeof item.notes === "object") {
+    notes = Object.values(item.notes);
+  } else if (item.note && typeof item.note === "string") {
+    notes = [
+      {
+        id: `legacy-${item.mediaId || Date.now()}`,
+        user: item.addedBy || "Timi",
+        text: item.note,
+        timestamp: item.savedAt || Date.now(),
+      },
+    ];
+  }
+
   return {
     id: `${item.mediaType}-${item.mediaId}`,
     mediaId: item.mediaId,
@@ -158,6 +175,7 @@ function normalizeOurViewItem(item) {
     voteAverage: item.voteAverage || 0,
     genreIds: Array.isArray(item.genreIds) ? item.genreIds : [],
     note: item.note || "",
+    notes,
     addedBy: item.addedBy || "Timi",
     savedAt: item.savedAt || Date.now(),
   };
@@ -208,7 +226,7 @@ function normalizeWatchItem(item) {
   };
 }
 
-export default new Vuex.Store({
+const store = new Vuex.Store({
   state: {
     continueWatching: loadContinueWatching(),
     myView: loadMyView(),
@@ -321,8 +339,30 @@ export default new Vuex.Store({
         persistOurView(state.ourView);
       }
     },
+    ADD_OUR_VIEW_NOTE(state, { itemId, noteObj }) {
+      const item = state.ourView.find((entry) => entry.id === itemId);
+      if (item) {
+        if (!Array.isArray(item.notes)) item.notes = [];
+        // Avoid duplicate note id
+        if (!item.notes.some((n) => n.id === noteObj.id)) {
+          item.notes.push(noteObj);
+        }
+        persistOurView(state.ourView);
+      }
+    },
+    REMOVE_OUR_VIEW_NOTE(state, { itemId, noteId }) {
+      const item = state.ourView.find((entry) => entry.id === itemId);
+      if (item && Array.isArray(item.notes)) {
+        item.notes = item.notes.filter((n) => n.id !== noteId);
+        persistOurView(state.ourView);
+      }
+    },
     REMOVE_FROM_OUR_VIEW(state, itemId) {
       state.ourView = state.ourView.filter((item) => item.id !== itemId);
+      persistOurView(state.ourView);
+    },
+    SET_OUR_VIEW(state, items) {
+      state.ourView = Array.isArray(items) ? items.map(normalizeOurViewItem) : [];
       persistOurView(state.ourView);
     },
     SET_NEXT_DATE_NIGHT(state, payload) {
@@ -391,19 +431,43 @@ export default new Vuex.Store({
       commit("REMOVE_FROM_MY_VIEW", itemId);
     },
     saveToOurView({ commit }, payload) {
+      const item = normalizeOurViewItem(payload);
       commit("SAVE_TO_OUR_VIEW", payload);
+      firebaseSync.addToQueue(item);
     },
     updateOurViewNote({ commit }, payload) {
       commit("UPDATE_OUR_VIEW_NOTE", payload);
+      firebaseSync.updateQueueNote(payload.itemId, payload.note, payload.addedBy);
+    },
+    addOurViewNote({ commit }, { itemId, text, user }) {
+      if (!text || !text.trim()) return;
+      const noteObj = {
+        id: `note-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        user: user || "Timi",
+        text: text.trim(),
+        timestamp: Date.now(),
+      };
+      commit("ADD_OUR_VIEW_NOTE", { itemId, noteObj });
+      firebaseSync.addQueueNote(itemId, noteObj);
+    },
+    removeOurViewNote({ commit }, { itemId, noteId }) {
+      commit("REMOVE_OUR_VIEW_NOTE", { itemId, noteId });
+      firebaseSync.removeQueueNote(itemId, noteId);
     },
     removeFromOurView({ commit }, itemId) {
       commit("REMOVE_FROM_OUR_VIEW", itemId);
+      firebaseSync.removeFromQueue(itemId);
+    },
+    setOurViewItems({ commit }, items) {
+      commit("SET_OUR_VIEW", items);
     },
     setNextDateNight({ commit }, payload) {
       commit("SET_NEXT_DATE_NIGHT", payload);
+      firebaseSync.setDateNight(payload);
     },
     clearNextDateNight({ commit }) {
       commit("CLEAR_NEXT_DATE_NIGHT");
+      firebaseSync.cancelDateNight();
     },
     markAsWatched({ commit }, payload) {
       commit("MARK_AS_WATCHED", payload);
@@ -417,3 +481,34 @@ export default new Vuex.Store({
   },
   modules: {},
 });
+
+// Automatic real-time cloud synchronisation subscriptions
+if (typeof window !== "undefined") {
+  let hasCheckedInitialMigration = false;
+
+  firebaseSync.subscribeToQueue((remoteQueue) => {
+    if (remoteQueue && Array.isArray(remoteQueue)) {
+      if (!hasCheckedInitialMigration) {
+        hasCheckedInitialMigration = true;
+        const alreadyMigrated = localStorage.getItem("our_view_firebase_migrated");
+        const localQueue = loadOurView();
+        if (!alreadyMigrated && !remoteQueue.length && localQueue.length) {
+          localStorage.setItem("our_view_firebase_migrated", "true");
+          localQueue.forEach((item) => firebaseSync.addToQueue(item));
+          return;
+        }
+        localStorage.setItem("our_view_firebase_migrated", "true");
+      }
+
+      store.commit("SET_OUR_VIEW", remoteQueue);
+    }
+  });
+
+  firebaseSync.subscribeToDateNight((remoteDateNight) => {
+    if (remoteDateNight !== undefined) {
+      store.commit("SET_NEXT_DATE_NIGHT", remoteDateNight);
+    }
+  });
+}
+
+export default store;
