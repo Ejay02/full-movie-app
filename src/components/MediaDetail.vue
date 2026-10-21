@@ -127,8 +127,8 @@
                   class="px-6 font-weight-bold text-none our-view-toggle-btn"
                   @click="toggleOurView"
                 >
-                  <v-icon left :color="isInOurView ? '#FF4081' : ''">
-                    {{ isInOurView ? 'mdi-heart' : 'mdi-heart-outline' }}
+                  <v-icon left :color="isInOurView ? '#00E5FF' : ''">
+                    {{ isInOurView ? 'mdi-account-group' : 'mdi-account-group-outline' }}
                   </v-icon>
                   {{ isInOurView ? 'In Our View' : 'Our View' }}
                 </v-btn>

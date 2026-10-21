@@ -6,16 +6,29 @@
       <router-view />
     </v-main>
     <foo-ter v-if="!$route.meta.hideFooter" />
+
+    <!-- First-Time Visitor Identification Dialog -->
+    <identity-onboarding-dialog />
+
+    <!-- Profile Icon Selector Dialog -->
+    <user-icon-selector-dialog />
   </v-app>
 </template>
 
 <script>
 import FooTer from "./components/FooTer.vue";
 import NavBar from "./components/NavBar.vue";
+import IdentityOnboardingDialog from "./components/IdentityOnboardingDialog.vue";
+import UserIconSelectorDialog from "./components/UserIconSelectorDialog.vue";
 
 export default {
   name: "App",
-  components: { NavBar, FooTer },
+  components: {
+    NavBar,
+    FooTer,
+    IdentityOnboardingDialog,
+    UserIconSelectorDialog,
+  },
 
   data: () => ({
     //

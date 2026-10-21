@@ -32,8 +32,8 @@
               title="Add to My View or Our Queue"
               @click.stop
             >
-              <v-icon :color="isInOurView ? '#FF4081' : (isInMyView ? 'light-green accent-3' : '')">
-                {{ (isInMyView && isInOurView) ? 'mdi-check-all' : (isInOurView ? 'mdi-heart' : (isInMyView ? 'mdi-check' : 'mdi-plus')) }}
+              <v-icon :color="isInOurView ? '#00E5FF' : (isInMyView ? 'light-green accent-3' : '')">
+                {{ (isInMyView && isInOurView) ? 'mdi-check-all' : (isInOurView ? 'mdi-account-group' : (isInMyView ? 'mdi-check' : 'mdi-plus')) }}
               </v-icon>
             </v-btn>
           </template>
@@ -54,8 +54,8 @@
 
             <v-list-item @click.stop="toggleOurView">
               <v-list-item-icon class="mr-2 my-1">
-                <v-icon small :color="isInOurView ? '#FF4081' : 'grey lighten-1'">
-                  {{ isInOurView ? 'mdi-heart' : 'mdi-heart-outline' }}
+                <v-icon small :color="isInOurView ? '#00E5FF' : 'grey lighten-1'">
+                  {{ isInOurView ? 'mdi-account-group' : 'mdi-account-group-outline' }}
                 </v-icon>
               </v-list-item-icon>
               <v-list-item-content class="py-1">

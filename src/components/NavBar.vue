@@ -56,6 +56,15 @@
             class="rounded-lg"
           ></v-img>
         </v-btn>
+        <v-btn
+          text
+          class="ml-2 nav-link"
+          :class="{ 'nav-link--active': $route.path === '/our-view' && $route.query.tab === 'games' }"
+          to="/our-view?tab=games"
+        >
+          <v-icon left x-small color="#E040FB">mdi-gamepad-variant</v-icon>
+          Games 🎮
+        </v-btn>
         <!-- Views Dropdown (My View & Our View) -->
         <v-menu
           offset-y
@@ -72,7 +81,7 @@
               v-bind="attrs"
               v-on="on"
             >
-              <v-icon v-if="isActive('/our-view')" left x-small color="#FF4081">mdi-heart</v-icon>
+              <v-icon v-if="isActive('/our-view')" left x-small color="#00E5FF">mdi-account-group</v-icon>
               <span>{{ activeViewLabel }}</span>
               <v-icon right x-small class="ml-1">mdi-chevron-down</v-icon>
             </v-btn>
@@ -89,13 +98,23 @@
               </v-list-item-content>
             </v-list-item>
 
-            <v-list-item to="/our-view" :class="{ 'v-list-item--active': isActive('/our-view') }">
+            <v-list-item to="/our-view" :class="{ 'v-list-item--active': isActive('/our-view') && $route.query.tab !== 'games' }">
               <v-list-item-icon class="mr-3">
-                <v-icon small color="#FF4081">mdi-heart</v-icon>
+                <v-icon small color="#00E5FF">mdi-account-group</v-icon>
               </v-list-item-icon>
               <v-list-item-content>
-                <v-list-item-title class="font-weight-bold rose--text" style="color: #FF80AB;">Our View</v-list-item-title>
+                <v-list-item-title class="font-weight-bold cyan--text" style="color: #00E5FF;">Our View</v-list-item-title>
                 <v-list-item-subtitle class="caption grey--text">Date Night & Watch Together</v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
+
+            <v-list-item to="/our-view?tab=games" :class="{ 'v-list-item--active': $route.path === '/our-view' && $route.query.tab === 'games' }">
+              <v-list-item-icon class="mr-3">
+                <v-icon small color="#E040FB">mdi-gamepad-variant</v-icon>
+              </v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title class="font-weight-bold" style="color: #E040FB;">Game Night 🎮</v-list-item-title>
+                <v-list-item-subtitle class="caption grey--text">WHOT! & Word Duel</v-list-item-subtitle>
               </v-list-item-content>
             </v-list-item>
 
@@ -124,11 +143,11 @@
                 @change="switchUser"
               >
                 <v-btn value="Timi" small class="text-none font-weight-bold flex-grow-1">
-                  <v-icon x-small left color="#FF4081">mdi-heart</v-icon>
+                  <v-icon x-small left color="#E040FB">{{ timiIcon }}</v-icon>
                   Timi
                 </v-btn>
                 <v-btn value="Ejay" small class="text-none font-weight-bold flex-grow-1">
-                  <v-icon x-small left color="#00E5FF">mdi-star</v-icon>
+                  <v-icon x-small left color="#00E5FF">{{ ejayIcon }}</v-icon>
                   Ejay
                 </v-btn>
               </v-btn-toggle>
@@ -161,8 +180,8 @@
             <v-list-item-content>
               <v-list-item-title class="font-weight-bold">
                 {{ currentUser }}
-                <v-icon x-small :color="currentUser === 'Timi' ? '#FF4081' : '#00E5FF'" class="ml-1">
-                  {{ currentUser === 'Timi' ? 'mdi-heart' : 'mdi-star' }}
+                <v-icon x-small :color="currentUser === 'Timi' ? '#E040FB' : '#00E5FF'" class="ml-1">
+                  {{ currentUser === 'Timi' ? timiIcon : ejayIcon }}
                 </v-icon>
               </v-list-item-title>
               <v-list-item-subtitle class="caption grey--text">Active Profile</v-list-item-subtitle>
@@ -176,6 +195,18 @@
             <v-list-item-title class="caption">
               Switch to {{ currentUser === 'Timi' ? 'Ejay' : 'Timi' }}
             </v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="openIconSelector">
+            <v-list-item-icon class="mr-3">
+              <v-icon small color="#00E5FF">mdi-palette-swatch-outline</v-icon>
+            </v-list-item-icon>
+            <v-list-item-title class="caption">Change Profile Icon 🎨</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="openIdentityModal">
+            <v-list-item-icon class="mr-3">
+              <v-icon small color="#FFD700">mdi-party-popper</v-icon>
+            </v-list-item-icon>
+            <v-list-item-title class="caption">Who is Watching? 🥂</v-list-item-title>
           </v-list-item>
           <v-list-item to="/our-view">
             <v-list-item-icon class="mr-3">
@@ -204,6 +235,8 @@ export default {
     return {
       searchQuery: this.$route.query.q || "",
       currentUser: localStorage.getItem("our_view_user") || "Timi",
+      timiIcon: localStorage.getItem("timi_user_icon") || "mdi-crown",
+      ejayIcon: localStorage.getItem("ejay_user_icon") || "mdi-lightning-bolt",
       snackbar: false,
       snackbarText: "",
     };
@@ -225,10 +258,12 @@ export default {
   mounted() {
     window.addEventListener("user-identity-changed", this.syncIdentity);
     window.addEventListener("storage", this.handleStorage);
+    window.addEventListener("user-icons-updated", this.syncUserIcons);
   },
   beforeDestroy() {
     window.removeEventListener("user-identity-changed", this.syncIdentity);
     window.removeEventListener("storage", this.handleStorage);
+    window.removeEventListener("user-icons-updated", this.syncUserIcons);
   },
   methods: {
     isActive(path) {
@@ -253,6 +288,22 @@ export default {
       localStorage.setItem("our_view_user", user);
       window.dispatchEvent(new CustomEvent("user-identity-changed", { detail: user }));
       this.showToast(`Switched profile to ${user}`);
+    },
+    openIdentityModal() {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("open-identity-selector"));
+      }
+    },
+    openIconSelector() {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("open-icon-selector", { detail: this.currentUser }));
+      }
+    },
+    syncUserIcons(e) {
+      if (e && e.detail) {
+        this.timiIcon = e.detail.timiIcon || this.timiIcon;
+        this.ejayIcon = e.detail.ejayIcon || this.ejayIcon;
+      }
     },
     syncIdentity(e) {
       if (e && e.detail) {

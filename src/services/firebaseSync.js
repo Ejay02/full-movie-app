@@ -2,6 +2,7 @@ import { initializeApp, getApps } from "firebase/app";
 import {
   getDatabase,
   ref,
+  get,
   onValue,
   set,
   push,
@@ -295,6 +296,92 @@ export const firebaseSync = {
       await set(dnRef, null);
     } catch (err) {
       console.warn("[FirebaseSync] cancelDateNight error:", err);
+    }
+  },
+
+  /* -------------------------------------------------------------
+     6. GAME NIGHT (WHOT!, WORD DUEL & SCOREBOARD)
+     Path: movie_app/rooms/{roomId}/games
+  ------------------------------------------------------------- */
+  subscribeToWhot(callback, roomId = "date-night") {
+    if (!this.isConfigured()) return () => {};
+    const whotRef = ref(db, `movie_app/rooms/${roomId}/games/whot`);
+    return onValue(whotRef, (snapshot) => {
+      callback(snapshot.val());
+    });
+  },
+
+  async updateWhotState(gameState, roomId = "date-night") {
+    if (!this.isConfigured() || !gameState) return;
+    try {
+      const whotRef = ref(db, `movie_app/rooms/${roomId}/games/whot`);
+      await set(whotRef, gameState);
+    } catch (err) {
+      console.warn("[FirebaseSync] updateWhotState error:", err);
+    }
+  },
+
+  subscribeToWordDuel(callback, roomId = "date-night") {
+    if (!this.isConfigured()) return () => {};
+    const wordRef = ref(db, `movie_app/rooms/${roomId}/games/wordDuel`);
+    return onValue(wordRef, (snapshot) => {
+      callback(snapshot.val());
+    });
+  },
+
+  async updateWordDuelState(duelState, roomId = "date-night") {
+    if (!this.isConfigured() || !duelState) return;
+    try {
+      const wordRef = ref(db, `movie_app/rooms/${roomId}/games/wordDuel`);
+      await set(wordRef, duelState);
+    } catch (err) {
+      console.warn("[FirebaseSync] updateWordDuelState error:", err);
+    }
+  },
+
+  subscribeToScrabble(callback, roomId = "date-night") {
+    if (!this.isConfigured()) return () => {};
+    const scrabbleRef = ref(db, `movie_app/rooms/${roomId}/games/scrabble`);
+    return onValue(scrabbleRef, (snapshot) => {
+      callback(snapshot.val());
+    });
+  },
+
+  async updateScrabbleState(scrabbleState, roomId = "date-night") {
+    if (!this.isConfigured() || !scrabbleState) return;
+    try {
+      const scrabbleRef = ref(db, `movie_app/rooms/${roomId}/games/scrabble`);
+      await set(scrabbleRef, scrabbleState);
+    } catch (err) {
+      console.warn("[FirebaseSync] updateScrabbleState error:", err);
+    }
+  },
+
+  subscribeToScoreboard(callback, roomId = "date-night") {
+    if (!this.isConfigured()) return () => {};
+    const scoresRef = ref(db, `movie_app/rooms/${roomId}/games/scores`);
+    return onValue(scoresRef, (snapshot) => {
+      callback(snapshot.val() || { timi: 0, ejay: 0 });
+    });
+  },
+
+  async recordGameWin(winner, gameType = "whot", roomId = "date-night") {
+    if (!this.isConfigured() || !winner) return;
+    try {
+      const key = winner.toLowerCase() === "timi" ? "timi" : "ejay";
+      const scoreKeyRef = ref(db, `movie_app/rooms/${roomId}/games/scores/${key}`);
+      const snap = await get(scoreKeyRef);
+      const current = snap.exists() ? snap.val() : 0;
+      await set(scoreKeyRef, current + 1);
+
+      if (gameType) {
+        const gameScoreRef = ref(db, `movie_app/rooms/${roomId}/games/${gameType}_scores/${key}`);
+        const gameSnap = await get(gameScoreRef);
+        const gameCurrent = gameSnap.exists() ? gameSnap.val() : 0;
+        await set(gameScoreRef, gameCurrent + 1);
+      }
+    } catch (err) {
+      console.warn("[FirebaseSync] recordGameWin error:", err);
     }
   },
 };

@@ -13,14 +13,23 @@
               <span class="grey--text text-caption mr-2 font-weight-bold">I am:</span>
               <v-btn-toggle v-model="currentUser" mandatory dense class="user-toggle">
                 <v-btn value="Timi" small class="text-none font-weight-bold timi-toggle-btn">
-                  <v-icon x-small left color="#FF4081">mdi-heart</v-icon>
+                  <v-icon x-small left color="#E040FB">{{ timiIcon }}</v-icon>
                   Timi
                 </v-btn>
                 <v-btn value="Ejay" small class="text-none font-weight-bold ejay-toggle-btn">
-                  <v-icon x-small left color="#00E5FF">mdi-star</v-icon>
+                  <v-icon x-small left color="#00E5FF">{{ ejayIcon }}</v-icon>
                   Ejay
                 </v-btn>
               </v-btn-toggle>
+              <v-btn
+                icon
+                x-small
+                class="ml-1"
+                title="Change Profile Icons"
+                @click="openIconSelector"
+              >
+                <v-icon x-small color="#FFD700">mdi-palette-swatch-outline</v-icon>
+              </v-btn>
             </div>
           </div>
           <p class="grey--text text--lighten-2 text-body-2 mb-0">
@@ -39,7 +48,7 @@
             class="text-none font-weight-bold px-5 plan-date-btn"
             @click="openPlanDialog"
           >
-            <v-icon left small>mdi-calendar-heart</v-icon>
+            <v-icon left small color="#FFD700">mdi-calendar-star</v-icon>
             Plan Next Date Night 🥂
           </v-btn>
           <div v-else class="scheduled-date-chip pa-3 d-flex align-center">
@@ -79,7 +88,7 @@
         Watch Together & Live Chat
       </v-tab>
       <v-tab class="text-none font-weight-bold tab-item">
-        <v-icon left small color="#FF4081">mdi-playlist-heart</v-icon>
+        <v-icon left small color="#00E5FF">mdi-filmstrip</v-icon>
         Our Queue
         <v-chip
           v-if="ourQueue.length"
@@ -93,6 +102,10 @@
       <v-tab class="text-none font-weight-bold tab-item">
         <v-icon left small color="#FF4081">mdi-dice-5</v-icon>
         Pass the Remote 🎲
+      </v-tab>
+      <v-tab class="text-none font-weight-bold tab-item">
+        <v-icon left small color="#E040FB">mdi-gamepad-variant</v-icon>
+        Game Night 🎮
       </v-tab>
     </v-tabs>
 
@@ -140,11 +153,11 @@
           <span class="grey--text text-caption mr-2 font-weight-bold">I am:</span>
           <v-btn-toggle v-model="currentUser" mandatory dense class="user-toggle">
             <v-btn value="Timi" small class="text-none font-weight-bold timi-toggle-btn">
-              <v-icon x-small left color="#FF4081">mdi-heart</v-icon>
+              <v-icon x-small left color="#E040FB">{{ timiIcon }}</v-icon>
               Timi
             </v-btn>
             <v-btn value="Ejay" small class="text-none font-weight-bold ejay-toggle-btn">
-              <v-icon x-small left color="#00E5FF">mdi-star</v-icon>
+              <v-icon x-small left color="#00E5FF">{{ ejayIcon }}</v-icon>
               Ejay
             </v-btn>
           </v-btn-toggle>
@@ -210,6 +223,20 @@
                   <v-icon x-small left color="#00E5FF">mdi-skip-next</v-icon>
                   Next Server
                 </v-btn>
+                <v-btn
+                  v-if="playerUrl"
+                  x-small
+                  outlined
+                  color="#00E5FF"
+                  :href="playerUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-none font-weight-bold ml-1"
+                  title="Open stream in a new unconstrained tab"
+                >
+                  <v-icon x-small left>mdi-open-in-new</v-icon>
+                  Open Stream ↗
+                </v-btn>
                 <v-btn icon small dark class="ml-1" title="Close Player" @click="closePlayer">
                   <v-icon small>mdi-close</v-icon>
                 </v-btn>
@@ -240,7 +267,8 @@
                 v-if="playerUrl"
                 :src="playerUrl"
                 allowfullscreen
-                allow="autoplay; encrypted-media; picture-in-picture"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="origin"
                 class="stream-iframe"
               ></iframe>
             </div>
@@ -296,7 +324,7 @@
                 class="text-none font-weight-bold px-6"
                 @click="activeTab = 1"
               >
-                <v-icon left small>mdi-playlist-heart</v-icon>
+                <v-icon left small>mdi-filmstrip</v-icon>
                 Browse Our Queue
               </v-btn>
               <v-btn
@@ -307,7 +335,7 @@
                 @click="activeTab = 2"
               >
                 <v-icon left small>mdi-dice-5</v-icon>
-                Roll Couples Dice 🎲
+                Roll Movie Dice 🎲
               </v-btn>
             </div>
           </div>
@@ -418,8 +446,8 @@
     <!-- Tab 2: Our Date Night Queue -->
     <div v-else-if="activeTab === 1" class="our-queue-tab">
       <div v-if="!ourQueue.length" class="empty-queue-card pa-12 text-center">
-        <v-icon size="64" color="rgba(255, 64, 129, 0.3)" class="mb-3">
-          mdi-heart-plus-outline
+        <v-icon size="64" color="rgba(0, 229, 255, 0.3)" class="mb-3">
+          mdi-filmstrip-box-multiple
         </v-icon>
         <h3 class="white--text text-h6 font-weight-bold mb-2">Our Queue is Empty</h3>
         <p class="grey--text text-body-2 mb-6 max-w-500 mx-auto">
@@ -497,8 +525,8 @@
                             style="font-size: 11px;"
                             :style="{ color: note.user === 'Timi' ? '#FF80AB' : '#00E5FF' }"
                           >
-                            <v-icon x-small :color="note.user === 'Timi' ? '#FF4081' : '#00E5FF'" class="mr-1">
-                              {{ note.user === 'Timi' ? 'mdi-heart' : 'mdi-star' }}
+                            <v-icon x-small :color="note.user === 'Timi' ? '#E040FB' : '#00E5FF'" class="mr-1">
+                              {{ note.user === 'Timi' ? timiIcon : ejayIcon }}
                             </v-icon>
                             {{ note.user }}
                           </span>
@@ -526,6 +554,10 @@
                   </div>
 
                   <!-- Quick Inline Add Note Field -->
+                  <div class="caption grey--text font-weight-medium mb-1 d-flex align-center">
+                    <v-icon x-small color="#00E5FF" class="mr-1">mdi-message-text-outline</v-icon>
+                    Movie Night Note / Comment:
+                  </div>
                   <div class="d-flex align-center gap-1 add-note-input-row">
                     <v-text-field
                       :value="newNoteInputs[item.id] || ''"
@@ -534,20 +566,20 @@
                       outlined
                       dark
                       hide-details
-                      :placeholder="`Note as ${currentUser}...`"
+                      :placeholder="`Add a note as ${currentUser}...`"
                       class="caption-input flex-grow-1"
                       @keydown.enter="submitNewNote(item.id)"
                     ></v-text-field>
                     <v-btn
                       small
                       depressed
-                      :color="currentUser === 'Timi' ? '#FF4081' : '#00E5FF'"
+                      :color="currentUser === 'Timi' ? '#E040FB' : '#00E5FF'"
                       :class="currentUser === 'Timi' ? 'white--text' : 'black--text'"
                       class="font-weight-bold text-none px-3"
                       @click="submitNewNote(item.id)"
                     >
                       <v-icon small left>mdi-send</v-icon>
-                      Add
+                      Post Note
                     </v-btn>
                   </div>
                 </div>
@@ -773,12 +805,90 @@
       </v-fade-transition>
     </div>
 
+    <!-- Tab 4: Game Night 🎮 (Couples Arcade) -->
+    <div v-else-if="activeTab === 3" class="game-night-tab py-4">
+      <!-- Live Couples Scoreboard Header -->
+      <div class="couples-scoreboard-card pa-4 mb-6 rounded-xl max-w-700 mx-auto text-center">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+          <div class="d-flex align-center gap-2">
+            <v-icon color="#FFD700" small>mdi-trophy-award</v-icon>
+            <span class="white--text caption font-weight-black text-uppercase tracking-wider">Arcade Scoreboard</span>
+          </div>
+          <div class="d-flex align-center gap-3">
+            <span class="caption font-weight-black" style="color: #FF80AB;">
+              Timi: {{ gameScores.timi || 0 }} 🏆
+            </span>
+            <span class="grey--text caption font-weight-bold">vs</span>
+            <span class="caption font-weight-black" style="color: #80D8FF;">
+              Ejay: {{ gameScores.ejay || 0 }} ⚡
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Mode Selector Buttons -->
+      <div class="d-flex justify-center align-center flex-wrap gap-3 mb-6">
+        <v-btn
+          rounded
+          depressed
+          :color="activeGameMode === 'whot' ? '#E040FB' : 'rgba(255, 255, 255, 0.08)'"
+          :class="activeGameMode === 'whot' ? 'white--text' : 'grey--text text--lighten-1'"
+          class="text-none font-weight-black px-6"
+          @click="activeGameMode = 'whot'"
+        >
+          <v-icon left small>mdi-cards-playing-outline</v-icon>
+          WHOT! 🃏
+        </v-btn>
+        <v-btn
+          rounded
+          depressed
+          :color="activeGameMode === 'wordDuel' ? '#00E5FF' : 'rgba(255, 255, 255, 0.08)'"
+          :class="activeGameMode === 'wordDuel' ? 'black--text' : 'grey--text text--lighten-1'"
+          class="text-none font-weight-black px-6"
+          @click="activeGameMode = 'wordDuel'"
+        >
+          <v-icon left small>mdi-format-letter-case</v-icon>
+          Word Duel 📝
+        </v-btn>
+        <v-btn
+          rounded
+          depressed
+          :color="activeGameMode === 'scrabble' ? '#FFD54F' : 'rgba(255, 255, 255, 0.08)'"
+          :class="activeGameMode === 'scrabble' ? 'black--text' : 'grey--text text--lighten-1'"
+          class="text-none font-weight-black px-6"
+          @click="activeGameMode = 'scrabble'"
+        >
+          <v-icon left small>mdi-grid</v-icon>
+          Words with Friends 🔠
+        </v-btn>
+      </div>
+
+      <!-- Active Game Component -->
+      <v-fade-transition mode="out-in">
+        <whot-game
+          v-if="activeGameMode === 'whot'"
+          :current-user="currentUser"
+          :room-id="roomId"
+        ></whot-game>
+        <word-duel-game
+          v-else-if="activeGameMode === 'wordDuel'"
+          :current-user="currentUser"
+          :room-id="roomId"
+        ></word-duel-game>
+        <scrabble-game
+          v-else-if="activeGameMode === 'scrabble'"
+          :current-user="currentUser"
+          :room-id="roomId"
+        ></scrabble-game>
+      </v-fade-transition>
+    </div>
+
     <!-- Date Night Planning Dialog -->
     <v-dialog v-model="showPlanDialog" max-width="500" persistent>
       <v-card class="plan-dialog-card pa-6" dark>
         <div class="d-flex align-center justify-space-between mb-4">
           <div class="d-flex align-center">
-            <v-icon color="#FF4081" class="mr-2">mdi-calendar-heart</v-icon>
+            <v-icon color="#FFD700" class="mr-2">mdi-calendar-star</v-icon>
             <h3 class="white--text text-h6 font-weight-bold mb-0">Plan Next Date Night</h3>
           </div>
           <v-btn icon small dark @click="showPlanDialog = false">
@@ -895,9 +1005,17 @@
 <script>
 import firebaseSync from "@/services/firebaseSync";
 import aiConciergeService from "@/services/aiConciergeService";
+import WhotGame from "@/components/games/WhotGame.vue";
+import WordDuelGame from "@/components/games/WordDuelGame.vue";
+import ScrabbleGame from "@/components/games/ScrabbleGame.vue";
 
 export default {
   name: "OurView",
+  components: {
+    WhotGame,
+    WordDuelGame,
+    ScrabbleGame,
+  },
   data() {
     return {
       activeTab: 0,
@@ -905,11 +1023,17 @@ export default {
       currentUser: (this.$route.query.user === "Ejay" || this.$route.query.user === "Timi")
         ? this.$route.query.user
         : (localStorage.getItem("our_view_user") || "Timi"),
+      timiIcon: localStorage.getItem("timi_user_icon") || "mdi-crown",
+      ejayIcon: localStorage.getItem("ejay_user_icon") || "mdi-lightning-bolt",
       copiedLink: false,
       snackbar: false,
       snackbarText: "",
       firebaseUnsubscribers: [],
       adShield: true,
+
+      // Game Night State
+      activeGameMode: "whot",
+      gameScores: { timi: 0, ejay: 0 },
 
       // Active player state
       activeMedia: null,
@@ -918,26 +1042,20 @@ export default {
         {
           name: "VidLink",
           id: "vidlink",
-          movieUrl: (id) => `https://vidlink.pro/movie/${id}`,
-          tvUrl: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}`,
+          movieUrl: (id) => `https://vidlink.pro/movie/${id}?primaryColor=FF4081&secondaryColor=00E5FF`,
+          tvUrl: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=FF4081&secondaryColor=00E5FF`,
         },
         {
-          name: "Embed.su",
-          id: "embed_su",
-          movieUrl: (id) => `https://embed.su/embed/movie/${id}`,
-          tvUrl: (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}`,
+          name: "VidSrc",
+          id: "vidsrc_pm",
+          movieUrl: (id) => `https://vidsrc.pm/embed/movie?tmdb=${id}`,
+          tvUrl: (id, s, e) => `https://vidsrc.pm/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
         },
         {
-          name: "2Embed",
-          id: "twoembed",
-          movieUrl: (id) => `https://www.2embed.cc/embed/${id}`,
-          tvUrl: (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`,
-        },
-        {
-          name: "Vidsrc.to",
-          id: "vidsrc_to",
-          movieUrl: (id) => `https://vidsrc.to/embed/movie/${id}`,
-          tvUrl: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`,
+          name: "MultiEmbed",
+          id: "multiembed",
+          movieUrl: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
+          tvUrl: (id, s, e) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`,
         },
         {
           name: "AutoEmbed",
@@ -946,10 +1064,10 @@ export default {
           tvUrl: (id, s, e) => `https://autoembed.co/tv/tmdb/${id}-${s}-${e}`,
         },
         {
-          name: "Vidsrc.me",
-          id: "vidsrc_me",
-          movieUrl: (id) => `https://vidsrc.me/embed/movie?tmdb=${id}`,
-          tvUrl: (id, s, e) => `https://vidsrc.me/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
+          name: "2Embed",
+          id: "twoembed",
+          movieUrl: (id) => `https://www.2embed.skin/embed/${id}`,
+          tvUrl: (id, s, e) => `https://www.2embed.skin/embedtv/${id}&s=${s}&e=${e}`,
         },
       ],
 
@@ -961,11 +1079,11 @@ export default {
       floatingEmojis: [],
       reactionsList: [
         { symbol: "🍿", title: "Popcorn" },
-        { symbol: "🖤", title: "Black Heart" },
+        { symbol: "🎬", title: "Cinema" },
         { symbol: "🥺", title: "Emotional" },
         { symbol: "😂", title: "Laughing" },
         { symbol: "🥂", title: "Cheers" },
-        { symbol: "😴", title: "Sleepy" },
+        { symbol: "🔥", title: "Fire" },
       ],
 
       // Our Queue Notes
@@ -1096,11 +1214,30 @@ export default {
         this.loadChatHistory();
       }
     },
+    "$route.query.tab"(newTab) {
+      if (newTab === "games" || newTab === "3") {
+        this.activeTab = 3;
+      } else if (newTab === "queue" || newTab === "1") {
+        this.activeTab = 1;
+      } else if (newTab === "dice" || newTab === "2") {
+        this.activeTab = 2;
+      } else if (newTab === "watch" || newTab === "0") {
+        this.activeTab = 0;
+      }
+    },
   },
   created() {
     this.initSync();
     this.loadChatHistory();
     this.checkRouteQueryParams();
+    const tabQ = this.$route.query.tab;
+    if (tabQ === "games" || tabQ === "3") {
+      this.activeTab = 3;
+    } else if (tabQ === "queue" || tabQ === "1") {
+      this.activeTab = 1;
+    } else if (tabQ === "dice" || tabQ === "2") {
+      this.activeTab = 2;
+    }
   },
   mounted() {
     this.startCountdownTimer();
@@ -1109,6 +1246,12 @@ export default {
     window.addEventListener("user-identity-changed", (e) => {
       if (e && e.detail) {
         this.currentUser = e.detail;
+      }
+    });
+    window.addEventListener("user-icons-updated", (e) => {
+      if (e && e.detail) {
+        this.timiIcon = e.detail.timiIcon || this.timiIcon;
+        this.ejayIcon = e.detail.ejayIcon || this.ejayIcon;
       }
     });
     // Broadcast presence so peers can sync active media
@@ -1216,7 +1359,13 @@ export default {
           }
         }, this.roomId);
 
-        this.firebaseUnsubscribers.push(unsubChat, unsubReaction, unsubMedia, unsubDice);
+        const unsubScores = firebaseSync.subscribeToScoreboard((scores) => {
+          if (scores) {
+            this.gameScores = scores;
+          }
+        }, this.roomId);
+
+        this.firebaseUnsubscribers.push(unsubChat, unsubReaction, unsubMedia, unsubDice, unsubScores);
       }
 
       // 2. BroadcastChannel for fast same-browser multi-tab sync
@@ -1543,6 +1692,11 @@ export default {
       this.showToast(`Switched server to ${prov ? prov.name : providerId}`);
       this.startBufferingWatchdog();
     },
+    openIconSelector() {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("open-icon-selector", { detail: this.currentUser }));
+      }
+    },
     streamQueueItem(item) {
       this.activeMedia = {
         mediaType: item.mediaType,
@@ -1600,16 +1754,8 @@ export default {
       }
     },
     startBufferingWatchdog() {
+      // Manual server switching preferred so playback is never interrupted unexpectedly
       this.clearBufferingWatchdog();
-      if (!this.activeMedia) return;
-
-      this.bufferingTimer = setTimeout(() => {
-        const nextProvider = this.getNextProvider();
-        this.serverBufferingNotice = `Server buffering? Auto-switching to ${nextProvider.name} in 4s...`;
-        this.bufferingAutoSwitchTimer = setTimeout(() => {
-          this.autoSwitchProvider();
-        }, 4000);
-      }, 6000);
     },
     clearBufferingWatchdog() {
       if (this.bufferingTimer) {
@@ -1658,14 +1804,17 @@ export default {
     },
     submitNewNote(itemId) {
       const text = (this.newNoteInputs[itemId] || "").trim();
-      if (!text) return;
+      if (!text) {
+        this.showToast("Please type a note first! 💬");
+        return;
+      }
       this.$store.dispatch("addOurViewNote", {
         itemId,
         text,
         user: this.currentUser,
       });
       this.$set(this.newNoteInputs, itemId, "");
-      this.showToast(`Note added as ${this.currentUser}! 💬`);
+      this.showToast(`Note posted as ${this.currentUser}! 💬`);
     },
     deleteNote(itemId, noteId) {
       this.$store.dispatch("removeOurViewNote", { itemId, noteId });
@@ -2348,5 +2497,12 @@ export default {
   background: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(13, 20, 38, 0.7) 100%);
   border: 1px solid rgba(0, 229, 255, 0.3);
   border-left: 3px solid #00E5FF;
+}
+
+/* Couples Game Night */
+.couples-scoreboard-card {
+  background: radial-gradient(circle at center, rgba(30, 20, 50, 0.75) 0%, rgba(10, 14, 25, 0.9) 100%);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 </style>

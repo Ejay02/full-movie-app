@@ -72,6 +72,22 @@
             Next Server
           </v-btn>
 
+          <!-- Direct Pop-out Stream Button -->
+          <v-btn
+            v-if="activeIframeUrl"
+            small
+            outlined
+            color="#00E5FF"
+            :href="activeIframeUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-none font-weight-bold mr-2"
+            title="Open stream in a new unconstrained tab"
+          >
+            <v-icon left x-small>mdi-open-in-new</v-icon>
+            Open Stream ↗
+          </v-btn>
+
           <!-- Quick Episode Drawer toggle (TV Series only) -->
           <v-btn
             v-if="mediaType === 'tv'"
@@ -198,7 +214,8 @@
           <iframe
             v-if="activeIframeUrl"
             allowfullscreen
-            allow="autoplay; encrypted-media; picture-in-picture"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="origin"
             :src="activeIframeUrl"
             class="theater-iframe"
             @load="handleIframeLoaded"
@@ -349,26 +366,20 @@ export default {
         {
           name: "VidLink",
           id: "vidlink",
-          movieUrl: (id) => `https://vidlink.pro/movie/${id}`,
-          tvUrl: (id, season, episode) => `https://vidlink.pro/tv/${id}/${season}/${episode}`,
+          movieUrl: (id) => `https://vidlink.pro/movie/${id}?primaryColor=FF4081&secondaryColor=00E5FF`,
+          tvUrl: (id, season, episode) => `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=FF4081&secondaryColor=00E5FF`,
         },
         {
-          name: "Embed.su",
-          id: "embed_su",
-          movieUrl: (id) => `https://embed.su/embed/movie/${id}`,
-          tvUrl: (id, season, episode) => `https://embed.su/embed/tv/${id}/${season}/${episode}`,
+          name: "VidSrc",
+          id: "vidsrc_pm",
+          movieUrl: (id) => `https://vidsrc.pm/embed/movie?tmdb=${id}`,
+          tvUrl: (id, season, episode) => `https://vidsrc.pm/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`,
         },
         {
-          name: "2Embed",
-          id: "twoembed",
-          movieUrl: (id) => `https://www.2embed.cc/embed/${id}`,
-          tvUrl: (id, season, episode) => `https://www.2embed.cc/embedtv/${id}&s=${season}&e=${episode}`,
-        },
-        {
-          name: "Vidsrc.to",
-          id: "vidsrc_to",
-          movieUrl: (id) => `https://vidsrc.to/embed/movie/${id}`,
-          tvUrl: (id, season, episode) => `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`,
+          name: "MultiEmbed",
+          id: "multiembed",
+          movieUrl: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
+          tvUrl: (id, season, episode) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`,
         },
         {
           name: "AutoEmbed",
@@ -377,11 +388,11 @@ export default {
           tvUrl: (id, season, episode) => `https://autoembed.co/tv/tmdb/${id}-${season}-${episode}`,
         },
         {
-          name: "Vidsrc.me",
-          id: "vidsrc_me",
-          movieUrl: (id) => `https://vidsrc.me/embed/movie?tmdb=${id}`,
-          tvUrl: (id, season, episode) => `https://vidsrc.me/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`,
-        }
+          name: "2Embed",
+          id: "twoembed",
+          movieUrl: (id) => `https://www.2embed.skin/embed/${id}`,
+          tvUrl: (id, season, episode) => `https://www.2embed.skin/embedtv/${id}&s=${season}&e=${episode}`,
+        },
       ],
 
       // Source Switch Toast Notification
@@ -742,15 +753,9 @@ export default {
       this.playNextEpisode();
     },
 
-    // Server Buffering Timeout Logic
+    // Server Buffering Timeout Logic (Manual switch preferred over forced interruptions)
     startBufferingCheck() {
       this.clearBufferingCheck();
-      
-      if (this.activeProviderId !== "personal") {
-        this.bufferingTimeout = setTimeout(() => {
-          this.autoSwitchProvider();
-        }, 16000); 
-      }
     },
     clearBufferingCheck() {
       if (this.bufferingTimeout) {
@@ -760,19 +765,9 @@ export default {
     },
     handleVideoWaiting() {
       this.clearBufferingCheck();
-      this.bufferingTimeout = setTimeout(() => {
-        this.autoSwitchProvider();
-      }, 10000);
     },
     handleIframeLoaded() {
-      // Cross-origin iframes load their initial HTML shell in 500ms before video buffers.
-      // Do not prematurely cancel the watchdog; keep a 14s timer to auto-switch if stream hangs.
       this.clearBufferingCheck();
-      if (this.activeProviderId !== "personal") {
-        this.bufferingTimeout = setTimeout(() => {
-          this.autoSwitchProvider();
-        }, 14000);
-      }
     },
     autoSwitchProvider() {
       const currentIdx = this.availableProviders.findIndex(p => p.id === this.activeProviderId);
