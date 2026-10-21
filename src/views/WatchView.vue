@@ -126,6 +126,14 @@
 
       <!-- Playback screen -->
       <div class="theater-playback-area">
+        <div v-if="sourceLoading" class="stream-status" role="status">
+          <v-progress-circular indeterminate color="cyan" class="mb-3" />
+          <span>Getting your stream ready…</span>
+        </div>
+        <div v-else-if="streamError" class="stream-status" role="alert">
+          <p>{{ streamError }}</p>
+          <v-btn color="cyan" class="black--text text-none" @click="preparePlayback">Retry stream</v-btn>
+        </div>
         <!-- Native video player -->
         <div v-if="showNativePlayer" class="native-theater-wrapper">
           <video
@@ -138,17 +146,15 @@
             :poster="backdropPath"
             @loadedmetadata="handleLoadedMetadata"
             @play="handlePlay"
+            @pause="saveCurrentProgress"
             @timeupdate="handleTimeUpdate"
             @ended="handlePlaybackEnded"
             @playing="clearBufferingCheck"
             @waiting="handleVideoWaiting"
+            @error="handleNativeError"
           >
-            <source
-              :src="mediaSource.sourceUrl"
-              :type="mediaSource.mimeType || 'video/mp4'"
-            />
             <track
-              v-for="track in mediaSource.subtitleTracks"
+              v-for="track in (activeSource && activeSource.subtitleTracks) || []"
               :key="`${track.label}-${track.srclang}`"
               kind="subtitles"
               :src="track.src"
@@ -214,7 +220,8 @@
           <iframe
             v-if="activeIframeUrl"
             allowfullscreen
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+            sandbox="allow-scripts allow-same-origin allow-presentation"
             referrerpolicy="origin"
             :src="activeIframeUrl"
             class="theater-iframe"
@@ -222,19 +229,6 @@
           ></iframe>
         </div>
       </div>
-
-      <!-- Bottom warning tip for public embeds (auto-dismisses after 7s to unblock controls) -->
-      <transition name="fade">
-        <div
-          v-if="showTheaterTip && activeProviderId !== 'personal'"
-          class="theater-tip pa-2 d-flex align-center justify-center text-caption grey--text"
-        >
-          <span><strong>Tip:</strong> If you see popups, please use an <strong>ad-blocker</strong> like uBlock Origin.</span>
-          <v-btn icon x-small class="ml-2 grey--text" @click="showTheaterTip = false" title="Dismiss">
-            <v-icon x-small>mdi-close</v-icon>
-          </v-btn>
-        </div>
-      </transition>
 
       <!-- In-Player Quick Episode Drawer (TV series) -->
       <transition name="drawer-slide">
@@ -361,31 +355,37 @@ export default {
       autoplayCancelled: false,
 
       // Streaming details
-      activeProviderId: localStorage.getItem("preferred_stream_server") || "vidlink",
+      activeProviderId: "native",
+      resolvedSource: null,
+      sourceLoading: false,
+      streamError: "",
+      sourceRequest: null,
+      hlsPlayer: null,
       providers: [
+        { name: "Cinema Player", id: "native", movieUrl: () => "", tvUrl: () => "" },
         {
           name: "VidLink",
           id: "vidlink",
-          movieUrl: (id) => `https://vidlink.pro/movie/${id}?primaryColor=FF4081&secondaryColor=00E5FF`,
-          tvUrl: (id, season, episode) => `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=FF4081&secondaryColor=00E5FF`,
+          movieUrl: (id) => `https://vidlink.pro/movie/${id}?primaryColor=FF4081&secondaryColor=00E5FF&autoplay=true`,
+          tvUrl: (id, season, episode) => `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=FF4081&secondaryColor=00E5FF&autoplay=true`,
         },
         {
           name: "VidSrc",
           id: "vidsrc_pm",
-          movieUrl: (id) => `https://vidsrc.pm/embed/movie?tmdb=${id}`,
-          tvUrl: (id, season, episode) => `https://vidsrc.pm/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`,
+          movieUrl: (id) => `https://vidsrc.pm/embed/movie?tmdb=${id}&autoPlay=1`,
+          tvUrl: (id, season, episode) => `https://vidsrc.pm/embed/tv?tmdb=${id}&season=${season}&episode=${episode}&autoPlay=1`,
         },
         {
           name: "MultiEmbed",
           id: "multiembed",
-          movieUrl: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
-          tvUrl: (id, season, episode) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`,
+          movieUrl: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1&autoplay=1`,
+          tvUrl: (id, season, episode) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}&autoplay=1`,
         },
         {
           name: "AutoEmbed",
           id: "autoembed",
-          movieUrl: (id) => `https://autoembed.co/movie/tmdb/${id}`,
-          tvUrl: (id, season, episode) => `https://autoembed.co/tv/tmdb/${id}-${season}-${episode}`,
+          movieUrl: (id) => `https://autoembed.co/movie/tmdb/${id}?autoplay=true`,
+          tvUrl: (id, season, episode) => `https://autoembed.co/tv/tmdb/${id}-${season}-${episode}?autoplay=true`,
         },
         {
           name: "2Embed",
@@ -399,10 +399,6 @@ export default {
       showSwitchToast: false,
       switchToastMessage: "",
       switchToastTimer: null,
-
-      // Bottom Tip Auto-dismiss
-      showTheaterTip: true,
-      tipTimer: null,
 
       // Episode drawer
       showEpisodeDrawer: false,
@@ -432,6 +428,9 @@ export default {
     mediaSource() {
       return getPersonalMediaSource(this.mediaType, this.mediaId);
     },
+    activeSource() {
+      return this.activeProviderId === "native" ? this.resolvedSource : this.mediaSource;
+    },
     hasPersonalSource() {
       return !!this.mediaSource;
     },
@@ -450,9 +449,9 @@ export default {
       return p ? p.name : "";
     },
     showNativePlayer() {
-      return this.activeProviderId === "personal" &&
+      return this.activeProviderId === "native" || (this.activeProviderId === "personal" &&
              this.mediaSource &&
-             this.mediaSource.sourceType === "video";
+             this.mediaSource.sourceType === "video");
     },
     activeIframeUrl() {
       if (this.activeProviderId === "personal") {
@@ -521,9 +520,10 @@ export default {
           // ignore storage error
         }
       }
-      this.recordContinueWatching({ force: true });
       this.startBufferingCheck();
-    }
+      if (!this.loading) this.preparePlayback();
+    },
+    '$route.params.id'() { this.loadPlayDetails(); },
   },
   async mounted() {
     await this.loadPlayDetails();
@@ -531,16 +531,82 @@ export default {
     window.addEventListener("keydown", this.handleKeyDown);
   },
   beforeDestroy() {
+    this.saveCurrentProgress();
+    this.disposePlayback();
     this.clearBufferingCheck();
     this.clearCountdown();
-    if (this.tipTimer) clearTimeout(this.tipTimer);
     if (this.switchToastTimer) clearTimeout(this.switchToastTimer);
     if (this.controlsTimer) clearTimeout(this.controlsTimer);
     if (this.seekIndicatorTimer) clearTimeout(this.seekIndicatorTimer);
     window.removeEventListener("keydown", this.handleKeyDown);
   },
   methods: {
+    disposePlayback() {
+      if (this.sourceRequest) { this.sourceRequest.abort(); this.sourceRequest = null; }
+      if (this.hlsPlayer) { this.hlsPlayer.destroy(); this.hlsPlayer = null; }
+    },
+    async preparePlayback() {
+      this.hasRestoredPosition = false;
+      this.disposePlayback();
+      this.streamError = "";
+      this.sourceLoading = false;
+      this.hasRestoredPosition = false;
+      this.lastTrackedSecond = -15;
+      this.resolvedSource = null;
+      if (this.activeProviderId === "native") {
+        const controller = new AbortController();
+        this.sourceRequest = controller;
+        this.sourceLoading = true;
+        try {
+          const query = new URLSearchParams({ type: this.mediaType, id: this.mediaId,
+            season: this.selectedSeason, episode: this.selectedEpisode });
+          const response = await fetch(`/api/stream?${query}`, { signal: controller.signal });
+          const source = await response.json();
+          if (!response.ok) throw new Error(source.message || 'This stream is unavailable.');
+          if (controller.signal.aborted) return;
+          this.resolvedSource = source;
+        } catch (error) {
+          if (!controller.signal.aborted) this.streamError = 'Could not load this stream. Please retry or choose another server.';
+          return;
+        } finally {
+          if (!controller.signal.aborted) this.sourceLoading = false;
+        }
+      }
+      await this.$nextTick();
+      const player = this.$refs.player;
+      const source = this.activeSource;
+      if (!player || !source || this._isDestroyed) return;
+      const isHls = source.mimeType?.includes('mpegurl') || /\.m3u8(?:\?|$)/i.test(source.sourceUrl);
+      if (!isHls) { player.src = source.sourceUrl; return; }
+      const { default: Hls } = await import('hls.js');
+      if (this._isDestroyed || player !== this.$refs.player || source !== this.activeSource) return;
+      if (!Hls.isSupported()) {
+        if (player.canPlayType('application/vnd.apple.mpegurl')) player.src = source.sourceUrl;
+        else this.streamError = 'This browser cannot play the stream. Try Safari, Chrome or Edge.';
+        return;
+      }
+      const hls = new Hls({ capLevelToPlayerSize: true, maxBufferLength: 30 });
+      this.hlsPlayer = hls;
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) {
+          this.streamError = 'The stream stopped. Retry to continue from your saved position.';
+          hls.destroy();
+        }
+      });
+      hls.loadSource(source.sourceUrl);
+      hls.attachMedia(player);
+    },
+    handleNativeError() {
+      if (!this.sourceLoading) this.streamError = 'Could not play this stream. Please retry.';
+    },
+    saveCurrentProgress() {
+      const player = this.$refs.player;
+      if (!player || !player.readyState || !this.hasRestoredPosition) return;
+      this.recordContinueWatching({ currentTime: player.currentTime, duration: player.duration, force: true });
+    },
     async loadPlayDetails() {
+      this.hasRestoredPosition = false;
+      this.disposePlayback();
       this.loading = true;
       this.errorMessage = "";
       this.hasRestoredPosition = false;
@@ -548,19 +614,10 @@ export default {
       this.showNextEpisodeCountdown = false;
       this.clearCountdown();
 
-      // Show tip briefly, then auto-dismiss after 7 seconds
-      this.showTheaterTip = true;
-      if (this.tipTimer) clearTimeout(this.tipTimer);
-      this.tipTimer = setTimeout(() => {
-        this.showTheaterTip = false;
-      }, 7000);
-
-      // Default or preferred server from localStorage
-      const savedServer = localStorage.getItem("preferred_stream_server");
-      const validServer = this.providers.some(p => p.id === savedServer);
+      // Start in the app-controlled player; backup servers remain an explicit choice.
       this.activeProviderId = this.hasPersonalSource
         ? "personal"
-        : (validServer ? savedServer : "vidlink");
+        : "native";
 
       try {
         const response = await this.$http.get(`/${this.mediaType}/${this.mediaId}`);
@@ -573,9 +630,9 @@ export default {
           const savedSeason = this.continueWatchingEntry ? this.continueWatchingEntry.season : null;
           const savedEpisode = this.continueWatchingEntry ? this.continueWatchingEntry.episode : null;
 
-          if (querySeason && Number.isInteger(querySeason)) {
+          if (querySeason > 0 && Number.isInteger(querySeason)) {
             this.selectedSeason = querySeason;
-            this.selectedEpisode = Number.isInteger(queryEpisode) ? queryEpisode : 1;
+            this.selectedEpisode = queryEpisode > 0 && Number.isInteger(queryEpisode) ? queryEpisode : 1;
           } else if (savedSeason) {
             this.selectedSeason = Number(savedSeason);
             this.selectedEpisode = savedEpisode ? Number(savedEpisode) : 1;
@@ -596,6 +653,7 @@ export default {
       } finally {
         this.loading = false;
       }
+      if (!this.errorMessage) await this.preparePlayback();
     },
     async fetchEpisodes() {
       try {
@@ -613,6 +671,7 @@ export default {
       this.$router.push(backPath).catch(() => {});
     },
     playEpisode(episodeNum) {
+      this.hasRestoredPosition = false;
       this.selectedEpisode = episodeNum;
       this.autoplayCancelled = false;
       this.showNextEpisodeCountdown = false;
@@ -620,6 +679,7 @@ export default {
       this.recordContinueWatching({ force: true });
       this.startBufferingCheck();
       this.updateUrlParams();
+      this.preparePlayback();
     },
     playNextEpisode() {
       if (this.hasNextEpisode) {
@@ -636,13 +696,15 @@ export default {
     },
     handleLoadedMetadata() {
       const player = this.$refs.player;
-      if (!player) return;
+      if (!player || this.hasRestoredPosition) return;
 
-      const savedTime = this.continueWatchingEntry ? this.continueWatchingEntry.currentTime : 0;
+      const saved = this.continueWatchingEntry;
+      const sameEpisode = this.mediaType !== 'tv' || (Number(saved?.season) === this.selectedSeason && Number(saved?.episode) === this.selectedEpisode);
+      const savedTime = sameEpisode && saved ? saved.currentTime : 0;
       if (savedTime > 0 && Number.isFinite(player.duration)) {
         player.currentTime = Math.min(savedTime, Math.max(player.duration - 5, 0));
-        this.hasRestoredPosition = true;
       }
+      this.hasRestoredPosition = true;
     },
     handlePlay() {
       const player = this.$refs.player;
@@ -687,8 +749,12 @@ export default {
         this.triggerNextEpisodeNow();
       }
     },
-    recordContinueWatching({ currentTime = 0, duration = 0, force = false } = {}) {
-      const isPublicEmbed = this.activeProviderId !== "personal";
+    recordContinueWatching({ currentTime = null, duration = null, force = false } = {}) {
+      const isPublicEmbed = !this.showNativePlayer;
+      const saved = this.continueWatchingEntry;
+      const sameEpisode = this.mediaType !== 'tv' || (Number(saved?.season) === this.selectedSeason && Number(saved?.episode) === this.selectedEpisode);
+      currentTime = currentTime ?? (sameEpisode ? saved?.currentTime || 0 : 0);
+      duration = duration ?? (sameEpisode ? saved?.duration || 0 : 0);
       let progressPercent = 0;
       let playbackLabel = "Continue Watching";
 
@@ -776,7 +842,7 @@ export default {
         const nextProvider = this.availableProviders[nextIdx];
         
         // Show unobtrusive toast notification
-        this.switchToastMessage = `Buffering: Auto-switched to ${nextProvider.name}`;
+        this.switchToastMessage = `Switched to ${nextProvider.name}`;
         this.showSwitchToast = true;
         if (this.switchToastTimer) clearTimeout(this.switchToastTimer);
         this.switchToastTimer = setTimeout(() => {
@@ -877,6 +943,7 @@ export default {
 </script>
 
 <style scoped>
+.stream-status { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; text-align: center; background: #05070de6; color: #dce6f0; }
 .watch-theater-view {
   background: #000000;
   width: 100vw;

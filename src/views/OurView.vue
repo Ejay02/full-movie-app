@@ -51,9 +51,9 @@
             <v-icon left small color="#FFD700">mdi-calendar-star</v-icon>
             Plan Next Date Night 🥂
           </v-btn>
-          <div v-else class="scheduled-date-chip pa-3 d-flex align-center">
-            <v-icon color="#FF4081" class="mr-3">mdi-calendar-clock</v-icon>
-            <div class="mr-4">
+          <div v-else class="scheduled-date-chip pa-3 d-flex align-center flex-wrap gap-2">
+            <v-icon color="#00E5FF" class="mr-2">mdi-calendar-clock</v-icon>
+            <div class="mr-3">
               <div class="white--text caption font-weight-bold text-uppercase tracking-wider">
                 {{ nextDateNight.title || 'Next Date Night' }}
               </div>
@@ -64,6 +64,19 @@
                 {{ formattedDateNightSchedule }}
               </div>
             </div>
+            <v-btn
+              v-if="nextDateNight.selectedMovieId"
+              small
+              rounded
+              depressed
+              color="#00E5FF"
+              class="black--text font-weight-bold text-none mr-2 px-3"
+              title="Stream feature film together"
+              @click="streamScheduledMovie"
+            >
+              <v-icon left small>mdi-play</v-icon>
+              Start Movie Date Now
+            </v-btn>
             <v-btn icon small dark class="mr-1" title="Edit Date Night" @click="openPlanDialog">
               <v-icon small>mdi-pencil</v-icon>
             </v-btn>
@@ -187,16 +200,14 @@
                 <!-- Ad Shield Chip -->
                 <v-chip
                   x-small
-                  :color="adShield ? 'rgba(0, 230, 118, 0.2)' : 'rgba(255, 82, 82, 0.2)'"
-                  :class="adShield ? 'green--text text--accent-3' : 'red--text text--accent-2'"
-                  class="font-weight-bold mr-1 cursor-pointer"
-                  title="Click to toggle Ad Shield (blocks popup and redirect ads)"
-                  @click="toggleAdShield"
+                  color="rgba(0, 230, 118, 0.2)"
+                  class="font-weight-bold mr-1 green--text text--accent-3"
+                  title="Browser sandbox blocks popup windows and top-level redirects. In-player adverts are controlled by the provider."
                 >
-                  <v-icon left x-small :color="adShield ? '#00E676' : '#FF5252'">
-                    {{ adShield ? 'mdi-shield-check' : 'mdi-shield-off' }}
+                  <v-icon left x-small color="#00E676">
+                    mdi-shield-check
                   </v-icon>
-                  {{ adShield ? 'Ad Shield: Active' : 'Ad Shield: Off' }}
+                  Popups blocked
                 </v-chip>
 
                 <span class="grey--text text-caption mr-1 hidden-xs-only">Server:</span>
@@ -261,24 +272,18 @@
               </div>
             </transition>
 
-            <!-- Iframe Container -->
-            <div class="iframe-container">
-              <iframe
-                v-if="playerUrl"
-                :src="playerUrl"
-                allowfullscreen
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                referrerpolicy="origin"
-                class="stream-iframe"
-              ></iframe>
+            <watch-together-player ref="togetherPlayer"
+              :key="playbackKey" :media="activeMedia" :provider="activeProviderId"
+              :url="playerUrl" :room-id="roomId" :current-user="currentUser" />
+            <div class="pa-3">
+              <v-btn small text color="cyan" class="text-none" @click="showVideoSourceDialog = true">Use a direct video</v-btn>
             </div>
-
             <!-- Video Player Controls & Broadcast Toolbar -->
             <div class="player-footer pa-3 d-flex align-center justify-space-between flex-wrap gap-2">
               <div class="d-flex align-center">
                 <v-chip x-small color="rgba(0, 229, 255, 0.2)" class="cyan--text text--accent-2 mr-2">
                   <v-icon left x-small color="#00E5FF">mdi-broadcast</v-icon>
-                  Synchronized
+                  Shared room
                 </v-chip>
                 <span class="grey--text text-caption">Watching together in Room <strong>{{ roomId }}</strong></span>
               </div>
@@ -298,7 +303,7 @@
                   text
                   color="grey lighten-1"
                   class="text-none"
-                  :to="`/movie/${activeMedia.mediaId}`"
+                  :to="`/${activeMedia.mediaType === 'tv' ? 'show' : 'movie'}/${activeMedia.mediaId}`"
                 >
                   View Details
                 </v-btn>
@@ -444,7 +449,7 @@
     </div>
 
     <!-- Tab 2: Our Date Night Queue -->
-    <div v-else-if="activeTab === 1" class="our-queue-tab">
+    <div v-if="activeTab === 1" class="our-queue-tab">
       <div v-if="!ourQueue.length" class="empty-queue-card pa-12 text-center">
         <v-icon size="64" color="rgba(0, 229, 255, 0.3)" class="mb-3">
           mdi-filmstrip-box-multiple
@@ -616,7 +621,7 @@
     </div>
 
     <!-- Tab 3: Pass the Remote 🎲 (Couples Dice) -->
-    <div v-else-if="activeTab === 2" class="couples-dice-tab py-4">
+    <div v-if="activeTab === 2" class="couples-dice-tab py-4">
       <!-- Mood Selector Hero (Visible when no pick is active) -->
       <div v-if="!pickedMovie" class="dice-hero text-center max-w-600 mx-auto mb-8">
         <h2 class="white--text text-h5 font-weight-bold mb-2">Pass the Remote 🎲</h2>
@@ -806,7 +811,7 @@
     </div>
 
     <!-- Tab 4: Game Night 🎮 (Couples Arcade) -->
-    <div v-else-if="activeTab === 3" class="game-night-tab py-4">
+    <div v-if="activeTab === 3" class="game-night-tab py-4">
       <!-- Live Couples Scoreboard Header -->
       <div class="couples-scoreboard-card pa-4 mb-6 rounded-xl max-w-700 mx-auto text-center">
         <div class="d-flex align-center justify-space-between flex-wrap gap-2">
@@ -828,6 +833,11 @@
 
       <!-- Game Mode Selector Buttons -->
       <div class="d-flex justify-center align-center flex-wrap gap-3 mb-6">
+        <v-btn rounded depressed :color="activeGameMode === 'crossword' ? '#80CBC4' : 'rgba(255, 255, 255, 0.08)'"
+          :class="activeGameMode === 'crossword' ? 'black--text' : 'grey--text text--lighten-1'"
+          class="text-none font-weight-black px-6" @click="activeGameMode = 'crossword'">
+          <v-icon left small>mdi-crosshairs</v-icon>Crossword Go
+        </v-btn>
         <v-btn
           rounded
           depressed
@@ -865,8 +875,9 @@
 
       <!-- Active Game Component -->
       <v-fade-transition mode="out-in">
+        <crossword-game v-if="activeGameMode === 'crossword'" :current-user="currentUser" :room-id="roomId" />
         <whot-game
-          v-if="activeGameMode === 'whot'"
+          v-else-if="activeGameMode === 'whot'"
           :current-user="currentUser"
           :room-id="roomId"
         ></whot-game>
@@ -883,6 +894,18 @@
       </v-fade-transition>
     </div>
 
+    <v-dialog v-model="showVideoSourceDialog" max-width="540">
+      <v-card dark class="pa-5">
+        <v-card-title class="px-0">Watch a direct video together</v-card-title>
+        <p class="grey--text">Paste an MP4 or WebM video URL that both devices can access. This uses the shared player with linked play, pause and seeking.</p>
+        <v-text-field v-model="directVideoUrl" label="HTTPS video URL" outlined hide-details />
+        <v-alert v-if="directVideoError" dense type="warning" class="mt-3">{{ directVideoError }}</v-alert>
+        <v-card-actions class="px-0 mt-3">
+          <v-btn text @click="showVideoSourceDialog = false">Cancel</v-btn>
+          <v-spacer /><v-btn color="cyan" class="black--text" @click="useDirectVideo">Use video for this title</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <!-- Date Night Planning Dialog -->
     <v-dialog v-model="showPlanDialog" max-width="500" persistent>
       <v-card class="plan-dialog-card pa-6" dark>
@@ -1003,17 +1026,22 @@
 </template>
 
 <script>
+import WatchTogetherPlayer from "@/components/WatchTogetherPlayer.vue";
+import { mediaKey } from "@/services/playbackSync";
 import firebaseSync from "@/services/firebaseSync";
 import aiConciergeService from "@/services/aiConciergeService";
 import WhotGame from "@/components/games/WhotGame.vue";
 import WordDuelGame from "@/components/games/WordDuelGame.vue";
+import CrosswordGame from "@/components/games/CrosswordGame.vue";
 import ScrabbleGame from "@/components/games/ScrabbleGame.vue";
 
 export default {
   name: "OurView",
   components: {
+    WatchTogetherPlayer,
     WhotGame,
     WordDuelGame,
+    CrosswordGame,
     ScrabbleGame,
   },
   data() {
@@ -1029,7 +1057,6 @@ export default {
       snackbar: false,
       snackbarText: "",
       firebaseUnsubscribers: [],
-      adShield: true,
 
       // Game Night State
       activeGameMode: "whot",
@@ -1037,31 +1064,41 @@ export default {
 
       // Active player state
       activeMedia: null,
-      activeProviderId: localStorage.getItem("preferred_stream_server") || "vidlink",
+      hasReceivedRoomMedia: false,
+      showVideoSourceDialog: false,
+      directVideoUrl: "",
+      directVideoError: "",
+      activeProviderId: "native",
       providers: [
+        {
+          name: "Together Player",
+          id: "native",
+          movieUrl: () => "",
+          tvUrl: () => "",
+        },
         {
           name: "VidLink",
           id: "vidlink",
-          movieUrl: (id) => `https://vidlink.pro/movie/${id}?primaryColor=FF4081&secondaryColor=00E5FF`,
-          tvUrl: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=FF4081&secondaryColor=00E5FF`,
+          movieUrl: (id) => `https://vidlink.pro/movie/${id}?primaryColor=FF4081&secondaryColor=00E5FF&autoplay=true`,
+          tvUrl: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=FF4081&secondaryColor=00E5FF&autoplay=true`,
         },
         {
           name: "VidSrc",
           id: "vidsrc_pm",
-          movieUrl: (id) => `https://vidsrc.pm/embed/movie?tmdb=${id}`,
-          tvUrl: (id, s, e) => `https://vidsrc.pm/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
+          movieUrl: (id) => `https://vidsrc.pm/embed/movie?tmdb=${id}&autoPlay=1`,
+          tvUrl: (id, s, e) => `https://vidsrc.pm/embed/tv?tmdb=${id}&season=${s}&episode=${e}&autoPlay=1`,
         },
         {
           name: "MultiEmbed",
           id: "multiembed",
-          movieUrl: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
-          tvUrl: (id, s, e) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`,
+          movieUrl: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1&autoplay=1`,
+          tvUrl: (id, s, e) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}&autoplay=1`,
         },
         {
           name: "AutoEmbed",
           id: "autoembed",
-          movieUrl: (id) => `https://autoembed.co/movie/tmdb/${id}`,
-          tvUrl: (id, s, e) => `https://autoembed.co/tv/tmdb/${id}-${s}-${e}`,
+          movieUrl: (id) => `https://autoembed.co/movie/tmdb/${id}?autoplay=true`,
+          tvUrl: (id, s, e) => `https://autoembed.co/tv/tmdb/${id}-${s}-${e}?autoplay=true`,
         },
         {
           name: "2Embed",
@@ -1129,6 +1166,7 @@ export default {
     };
   },
   computed: {
+    playbackKey() { return `${this.roomId}:${mediaKey(this.activeMedia, this.activeProviderId)}`; },
     ourQueue() {
       return this.$store.getters.ourViewItems || [];
     },
@@ -1180,6 +1218,16 @@ export default {
     },
   },
   watch: {
+    roomId() {
+      this.firebaseUnsubscribers.forEach((stop) => stop());
+      this.firebaseUnsubscribers = [];
+      if (this.broadcastChannel) this.broadcastChannel.close();
+      window.removeEventListener("storage", this.handleStorageEvent);
+      this.activeMedia = null;
+      this.hasReceivedRoomMedia = false;
+      this.initSync();
+      this.loadChatHistory();
+    },
     currentUser(newVal) {
       localStorage.setItem("our_view_user", newVal);
       window.dispatchEvent(new CustomEvent("user-identity-changed", { detail: newVal }));
@@ -1211,7 +1259,6 @@ export default {
     "$route.query.room"(newRoom) {
       if (newRoom && newRoom !== this.roomId) {
         this.roomId = newRoom;
-        this.loadChatHistory();
       }
     },
     "$route.query.tab"(newTab) {
@@ -1242,7 +1289,6 @@ export default {
   mounted() {
     this.startCountdownTimer();
     this.scrollChatToBottom();
-    this.setupPopupProtection();
     window.addEventListener("user-identity-changed", (e) => {
       if (e && e.detail) {
         this.currentUser = e.detail;
@@ -1264,7 +1310,6 @@ export default {
     }
   },
   beforeDestroy() {
-    this.teardownPopupProtection();
     if (this.firebaseUnsubscribers && this.firebaseUnsubscribers.length) {
       this.firebaseUnsubscribers.forEach((unsub) => {
         if (typeof unsub === "function") unsub();
@@ -1301,37 +1346,11 @@ export default {
         }, this.roomId);
 
         const unsubMedia = firebaseSync.subscribeToActiveMedia((media) => {
-          if (media) {
-            const isFreshPlayback = media.timestamp && (Date.now() - media.timestamp < 45000);
-            const hasMediaChanged = !this.activeMedia || this.activeMedia.mediaId !== media.mediaId;
-            const hasProviderChanged = media.providerId && this.activeProviderId !== media.providerId;
-            if (hasMediaChanged || hasProviderChanged) {
-              this.activeMedia = media;
-              if (media.providerId && this.activeProviderId !== media.providerId) {
-                this.activeProviderId = media.providerId;
-                const prov = this.providers.find((p) => p.id === media.providerId);
-                this.showToast(`Partner switched server to ${prov ? prov.name : media.providerId}! 🍿`);
-              } else if (hasMediaChanged && isFreshPlayback) {
-                this.showToast(`Partner streaming: ${media.title || 'Movie'}! 🍿`);
-              }
-              if (isFreshPlayback) {
-                this.activeTab = 0;
-              }
-              try {
-                localStorage.setItem(`our-view-active-media-${this.roomId}`, JSON.stringify(media));
-              } catch (e) {
-                // ignore
-              }
-            }
-          } else if (!media && this.activeMedia) {
-            this.activeMedia = null;
-            this.clearBufferingWatchdog();
-            try {
-              localStorage.removeItem(`our-view-active-media-${this.roomId}`);
-            } catch (e) {
-              // ignore
-            }
-          }
+          if (!media && !this.hasReceivedRoomMedia && this.activeMedia) {
+            // A title in a join link seeds an empty room, never replaces a live room.
+            firebaseSync.seedActiveMedia(this.activeMedia, this.roomId);
+          } else this.receiveActiveMedia(media);
+          this.hasReceivedRoomMedia = true;
         }, this.roomId);
 
         const unsubDice = firebaseSync.subscribeToDice((diceData) => {
@@ -1396,17 +1415,7 @@ export default {
       } else if (data.type === "REACTION") {
         this.triggerFloatingEmoji(data.payload.symbol);
       } else if (data.type === "PLAY_MEDIA") {
-        this.activeMedia = data.payload;
-        if (data.payload && data.payload.providerId && this.activeProviderId !== data.payload.providerId) {
-          this.activeProviderId = data.payload.providerId;
-        }
-        this.activeTab = 0;
-        try {
-          localStorage.setItem(`our-view-active-media-${this.roomId}`, JSON.stringify(data.payload));
-        } catch (e) {
-          // ignore
-        }
-        this.showToast(`${data.sender || 'Partner'} started streaming ${data.payload.title}! 🍿`);
+        this.receiveActiveMedia(data.payload);
       } else if (data.type === "CLOSE_MEDIA") {
         this.activeMedia = null;
         this.clearBufferingWatchdog();
@@ -1440,7 +1449,7 @@ export default {
           this.activeProviderId = data.payload.providerId;
         }
         this.activeTab = 0;
-        try {
+          try {
           localStorage.setItem(`our-view-active-media-${this.roomId}`, JSON.stringify(data.payload));
         } catch (e) {
           // ignore
@@ -1454,8 +1463,6 @@ export default {
         this.diceRolledBy = null;
         this.rollingDice = false;
         this.aiPitch = "";
-      } else if (data.type === "SYNC_PING") {
-        this.showToast(`${data.sender || 'Partner'} requested a playback sync.`);
       }
     },
     handleStorageEvent(event) {
@@ -1629,37 +1636,6 @@ export default {
         this.activeTab = 0;
       }
     },
-    toggleAdShield() {
-      this.adShield = !this.adShield;
-      this.showToast(
-        this.adShield
-          ? "🛡️ Ad Shield enabled: Popups and redirects blocked!"
-          : "⚠️ Ad Shield disabled."
-      );
-    },
-    setupPopupProtection() {
-      if (typeof window === "undefined" || this._popupProtectionActive) return;
-      this._popupProtectionActive = true;
-      this._originalWindowOpen = window.open;
-      const self = this;
-      window.open = function(url, target, features) {
-        if (self.adShield) {
-          if (!url || typeof url !== "string" || url.startsWith("/") || url.includes(window.location.host)) {
-            return self._originalWindowOpen ? self._originalWindowOpen.call(window, url, target, features) : null;
-          }
-          console.warn("[AdShield] Blocked popup window:", url);
-          self.showToast("🛡️ Ad Shield blocked an external popup!");
-          return null;
-        }
-        return self._originalWindowOpen ? self._originalWindowOpen.call(window, url, target, features) : null;
-      };
-    },
-    teardownPopupProtection() {
-      if (typeof window !== "undefined" && this._originalWindowOpen) {
-        window.open = this._originalWindowOpen;
-        this._popupProtectionActive = false;
-      }
-    },
     changeServer(providerId) {
       this.clearBufferingWatchdog();
       this.activeProviderId = providerId;
@@ -1669,6 +1645,9 @@ export default {
         this.activeMedia = {
           ...this.activeMedia,
           providerId,
+          playerVersion: 2,
+          sourceUrl: null,
+          useEmbed: true,
         };
         firebaseSync.setActiveMedia(this.activeMedia, this.roomId);
 
@@ -1698,7 +1677,9 @@ export default {
       }
     },
     streamQueueItem(item) {
+      this.activeProviderId = 'native';
       this.activeMedia = {
+        playerVersion: 2,
         mediaType: item.mediaType,
         mediaId: item.mediaId,
         title: item.title,
@@ -1782,15 +1763,70 @@ export default {
       this.changeServer(nextProvider.id);
     },
     broadcastSyncPing() {
+      if (this.$refs.togetherPlayer) this.$refs.togetherPlayer.syncNow();
+    },
+    receiveActiveMedia(media) {
+      if (media && !media.sourceUrl && (!media.playerVersion || !this.providers.some(item => item.id === media.providerId))) {
+        media = { ...media, providerId: 'native', playerVersion: 2 };
+      }
+      const changed = mediaKey(this.activeMedia, this.activeProviderId) !== mediaKey(media, media?.providerId || this.activeProviderId);
+      this.activeMedia = media;
+      if (media?.providerId) this.activeProviderId = media.providerId;
+      if (changed && media) this.showToast('Shared title: ' + (media.title || 'Movie'));
+      try {
+        const key = 'our-view-active-media-' + this.roomId;
+        if (media) localStorage.setItem(key, JSON.stringify(media));
+        else localStorage.removeItem(key);
+      } catch (_) { /* Cloud state remains authoritative. */ }
+    },
+    useDirectVideo() {
+      this.directVideoError = "";
+      try {
+        const url = new URL(this.directVideoUrl.trim());
+        if (url.protocol !== "https:" || url.username || url.password) throw new Error();
+        this.activeMedia = { ...this.activeMedia, sourceUrl: url.href, useEmbed: false, timestamp: Date.now() };
+        firebaseSync.setActiveMedia(this.activeMedia, this.roomId);
+        this.receiveActiveMedia(this.activeMedia);
+        this.showVideoSourceDialog = false;
+      } catch (_) { this.directVideoError = "Enter a direct HTTPS video URL accessible on both devices."; }
+    },
+    streamScheduledMovie() {
+      if (!this.nextDateNight || !this.nextDateNight.selectedMovieId) return;
+      const movieItem = this.ourQueue.find((i) => i.id === this.nextDateNight.selectedMovieId);
+      const mediaId = movieItem ? movieItem.mediaId : this.nextDateNight.selectedMovieId;
+      const title = movieItem ? movieItem.title : (this.nextDateNight.movieTitle || "Date Night Movie");
+      const mediaType = movieItem ? movieItem.mediaType : "movie";
+      this.activeProviderId = 'native';
+
+      this.activeMedia = {
+        playerVersion: 2,
+        mediaType,
+        mediaId,
+        title,
+        providerId: this.activeProviderId,
+        season: 1,
+        episode: 1,
+        timestamp: Date.now(),
+      };
+      this.activeTab = 0;
+
       const packet = {
-        type: "SYNC_PING",
+        type: "PLAY_MEDIA",
         roomId: this.roomId,
         sender: this.currentUser,
+        payload: this.activeMedia,
       };
+      firebaseSync.setActiveMedia(this.activeMedia, this.roomId);
       if (this.broadcastChannel) {
         this.broadcastChannel.postMessage(packet);
       }
-      this.showToast("Playback sync requested with partner! ✨");
+      try {
+        localStorage.setItem(`our-view-active-media-${this.roomId}`, JSON.stringify(this.activeMedia));
+        localStorage.setItem("our-view-last-sync-event", JSON.stringify(packet));
+      } catch (e) {
+        // ignore
+      }
+      this.showToast(`Starting date night feature: ${title}! 🍿`);
     },
     posterUrl(item) {
       if (item && item.posterPath) {
@@ -1957,7 +1993,9 @@ export default {
     },
     acceptDicePick() {
       if (!this.pickedMovie) return;
+      this.activeProviderId = 'native';
       this.activeMedia = {
+        playerVersion: 2,
         mediaType: "movie",
         mediaId: this.pickedMovie.id,
         title: this.pickedMovie.title || this.pickedMovie.name,

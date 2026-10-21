@@ -2,12 +2,12 @@ import { initializeApp, getApps } from "firebase/app";
 import {
   getDatabase,
   ref,
-  get,
   onValue,
   set,
   push,
   update,
   remove,
+  runTransaction,
 } from "firebase/database";
 
 const firebaseConfig = {
@@ -39,6 +39,42 @@ if (firebaseConfig.apiKey && firebaseConfig.databaseURL) {
 }
 
 export const firebaseSync = {
+  subscribeToPlayback(callback, roomId, onError) {
+    if (!this.isConfigured()) return () => {};
+    return onValue(ref(db, `movie_app/rooms/${roomId}/playback`),
+      (snapshot) => callback(snapshot.val()), onError);
+  },
+  subscribeToConnection(callback) {
+    if (!this.isConfigured()) { callback(false); return () => {}; }
+    return onValue(ref(db, ".info/connected"), (snapshot) => callback(snapshot.val() === true));
+  },
+  subscribeToClock(callback) {
+    if (!this.isConfigured()) return () => {};
+    return onValue(ref(db, ".info/serverTimeOffset"), (snapshot) => callback(snapshot.val() || 0));
+  },
+  async setPlayback(state, roomId) {
+    if (!this.isConfigured()) throw new Error("Cloud connection is unavailable.");
+    await set(ref(db, `movie_app/rooms/${roomId}/playback`), state);
+  },
+  subscribeToGame(type, callback, roomId, onError) {
+    if (!this.isConfigured()) { callback(null); return () => {}; }
+    return onValue(ref(db, `movie_app/rooms/${roomId}/games/${type}`),
+      (snapshot) => callback(snapshot.val()), onError);
+  },
+  async saveGame(type, state, roomId, previous, onlyIfMissing = false) {
+    const next = JSON.parse(JSON.stringify({ ...state,
+      revision: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    }));
+    if (!this.isConfigured()) return next;
+    const result = await runTransaction(ref(db, `movie_app/rooms/${roomId}/games/${type}`), (current) => {
+      if (onlyIfMissing) return current || next;
+      const version = (value) => value?.revision || value?.updatedAt || null;
+      if (version(current) !== version(previous)) return;
+      return next;
+    }, { applyLocally: false });
+    if (!result.committed) throw new Error("The match changed on another device. Review the latest turn and try again.");
+    return result.snapshot.val();
+  },
   isConfigured() {
     return isConfigured && db !== null;
   },
@@ -195,6 +231,14 @@ export const firebaseSync = {
     } catch (err) {
       console.warn("[FirebaseSync] setActiveMedia error:", err);
     }
+  },
+
+  async seedActiveMedia(media, roomId = "date-night") {
+    if (!this.isConfigured()) return;
+    try {
+      await runTransaction(ref(db, `movie_app/rooms/${roomId}/activeMedia`),
+        (current) => current || media, { applyLocally: false });
+    } catch (error) { console.warn("[FirebaseSync] Unable to initialize room media", error); }
   },
 
   async closeActiveMedia(roomId = "date-night") {
@@ -370,15 +414,11 @@ export const firebaseSync = {
     try {
       const key = winner.toLowerCase() === "timi" ? "timi" : "ejay";
       const scoreKeyRef = ref(db, `movie_app/rooms/${roomId}/games/scores/${key}`);
-      const snap = await get(scoreKeyRef);
-      const current = snap.exists() ? snap.val() : 0;
-      await set(scoreKeyRef, current + 1);
+      await runTransaction(scoreKeyRef, (current) => (Number(current) || 0) + 1);
 
       if (gameType) {
         const gameScoreRef = ref(db, `movie_app/rooms/${roomId}/games/${gameType}_scores/${key}`);
-        const gameSnap = await get(gameScoreRef);
-        const gameCurrent = gameSnap.exists() ? gameSnap.val() : 0;
-        await set(gameScoreRef, gameCurrent + 1);
+        await runTransaction(gameScoreRef, (current) => (Number(current) || 0) + 1);
       }
     } catch (err) {
       console.warn("[FirebaseSync] recordGameWin error:", err);

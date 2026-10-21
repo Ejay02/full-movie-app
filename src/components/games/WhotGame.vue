@@ -1,5 +1,7 @@
 <template>
   <div class="whot-game-container pa-3 pa-sm-6">
+    <v-alert v-if="gameError" dense outlined type="warning" role="alert">{{ gameError }}</v-alert>
+    <div v-if="gameLoading || gameSaving" class="caption cyan--text mb-3" role="status">{{ gameLoading ? 'Restoring your match…' : 'Saving move…' }}</div>
     <!-- Header: Game Title & Live Turn Indicator -->
     <div class="whot-header d-flex align-center justify-space-between flex-wrap gap-2 mb-4">
       <div class="d-flex align-center">
@@ -18,7 +20,7 @@
           <v-icon left x-small :color="isMyTurn ? '#00E676' : '#FF4081'">
             {{ isMyTurn ? 'mdi-account-star' : 'mdi-clock-outline' }}
           </v-icon>
-          {{ isMyTurn ? 'Your Turn to Play!' : `${opponentName}'s Turn...` }}
+          {{ gameLoading ? 'Restoring match…' : gameSaving ? 'Saving move…' : isMyTurn ? 'Your Turn to Play!' : `${gameState.currentTurn}'s turn` }}
         </v-chip>
 
         <v-btn
@@ -26,7 +28,7 @@
           outlined
           color="#E040FB"
           class="text-none font-weight-bold"
-          @click="resetGame"
+          :disabled="gameLoading || gameSaving" @click="resetGame"
         >
           <v-icon x-small left>mdi-restart</v-icon>
           New Game
@@ -56,7 +58,7 @@
         <!-- Face-down cards fan -->
         <div class="opponent-cards-fan d-flex justify-center align-center">
           <div
-            v-for="(card, i) in opponentHand"
+            v-for="(card, i) in opponentHand.slice(0, 8)"
             :key="card.id || i"
             class="whot-card-back mx-n2"
             :style="{ transform: `rotate(${(i - opponentHand.length / 2) * 3}deg)` }"
@@ -69,19 +71,19 @@
       <!-- 2. CENTER TABLE: Market (Draw Pile) & Discard (Active Card) -->
       <div class="center-table-section d-flex align-center justify-center gap-6 my-6">
         <!-- Market / Draw Pile -->
-        <div class="market-pile-container text-center" @click="handleDrawMarket">
+        <button type="button" class="market-pile-container text-center" :disabled="!isMyTurn || showShapePickerDialog" @click="handleDrawMarket" aria-label="Draw one card from the market and end your turn">
           <div class="market-pile cursor-pointer" :class="{ 'market-active': isMyTurn }">
             <div class="market-stack-effect">
               <div class="whot-card-back main-market-card">
                 <span class="market-logo">MARKET</span>
-                <span class="market-count caption font-weight-bold">{{ gameState.market.length }}</span>
+                <span class="market-count caption font-weight-bold">{{ (gameState.market || []).length }}</span>
               </div>
             </div>
           </div>
           <span class="market-draw-hint text-caption mt-1 d-block" :class="isMyTurn ? 'cyan--text font-weight-bold' : 'grey--text'">
-            {{ isMyTurn ? 'Tap to Draw 🛒' : 'Market Pile' }}
+            {{ gameLoading || gameSaving ? 'Please wait…' : isMyTurn ? 'Draw 1 · end turn' : `Wait for ${gameState.currentTurn}` }}
           </span>
-        </div>
+        </button>
 
         <!-- Discard Pile (Top Active Card) -->
         <div class="discard-pile-container text-center">
@@ -148,6 +150,16 @@
 
       <!-- 3. PLAYER'S HAND (Bottom) -->
       <div class="player-hand-section text-center pt-2">
+        <div class="hand-controls turn-panel pa-3 mb-4" :class="{ 'turn-panel-active': isMyTurn }">
+          <div class="hand-turn-copy" role="status" aria-live="polite">
+            <strong class="white--text d-block">{{ gameLoading ? 'Restoring match…' : gameSaving ? 'Saving move…' : isMyTurn ? `Your turn, ${currentUser}` : `${gameState.currentTurn}'s turn` }}</strong>
+            <span class="caption grey--text text--lighten-2">{{ turnHelp }}</span>
+            <span class="caption d-block cyan--text">Match {{ gameState.calledSuit ? getSuitLabel(gameState.calledSuit) : `${gameState.topCard.number} or ${getSuitLabel(gameState.topCard.suit)}` }}</span>
+          </div>
+          <v-btn small color="cyan" class="black--text text-none font-weight-bold" :disabled="!isMyTurn || showShapePickerDialog" @click="handleDrawMarket">
+            Draw 1 · end turn
+          </v-btn>
+        </div>
         <div class="d-flex align-center justify-center gap-2 mb-3">
           <span
             class="text-caption font-weight-bold"
@@ -165,13 +177,15 @@
 
         <!-- Hand Cards List -->
         <div class="player-cards-row d-flex justify-center align-center flex-wrap gap-2">
-          <div
+          <button type="button"
             v-for="card in myHand"
             :key="card.id"
+            :disabled="!isMyTurn || !isCardPlayable(card) || showShapePickerDialog"
+            :aria-label="`${card.number} of ${getSuitLabel(card.suit)}${isCardPlayable(card) ? ' — playable' : ' — cannot play'}`"
             class="whot-card cursor-pointer pa-2 text-center"
             :class="{
               'whot-card-playable': isMyTurn && isCardPlayable(card),
-              'whot-card-disabled': isMyTurn && !isCardPlayable(card),
+              'whot-card-disabled': !isMyTurn || !isCardPlayable(card),
             }"
             :style="{
               borderColor: getSuitColor(card.suit),
@@ -198,7 +212,7 @@
               </span>
               <span class="card-corner-shape">{{ getSuitSymbol(card.suit) }}</span>
             </div>
-          </div>
+          </button>
         </div>
       </div>
     </div>
@@ -229,7 +243,7 @@
         color="#E040FB"
         dark
         class="text-none font-weight-black px-8"
-        @click="startNewMatch"
+        :disabled="gameLoading || gameSaving" @click="startNewMatch"
       >
         <v-icon left>mdi-play</v-icon>
         {{ gameState && gameState.winner ? 'Play Again 🃏' : 'Deal & Start Match 🃏' }}
@@ -240,6 +254,7 @@
     <v-dialog v-model="showShapePickerDialog" max-width="400" persistent>
       <v-card class="shape-dialog-card pa-6 text-center" dark>
         <v-icon size="48" color="#E040FB" class="mb-2">mdi-cards-playing-spade-multiple</v-icon>
+        <v-btn small text class="mb-2" @click="showShapePickerDialog = false; pendingCard20 = null">Cancel</v-btn>
         <h3 class="white--text text-h6 font-weight-black mb-1">WHOT 20!</h3>
         <p class="grey--text text-caption mb-4">
           Choose which shape your partner must play next:
@@ -265,10 +280,11 @@
 </template>
 
 <script>
+import gameSession from "@/services/gameSession";
 import whotGameLogic, { SUIT_META, WHOT_SUITS } from "@/services/whotGameLogic";
-import firebaseSync from "@/services/firebaseSync";
 
 export default {
+  mixins: [gameSession("whot", "gameState", null)],
   name: "WhotGame",
   props: {
     currentUser: {
@@ -290,11 +306,19 @@ export default {
     };
   },
   computed: {
+    turnHelp() {
+      if (this.gameLoading) return 'Restoring the saved match. Controls will unlock when it is ready.';
+      if (this.gameSaving) return 'Saving your move. Please wait…';
+      if (!this.isMyTurn) return `You're ${this.currentUser} · waiting for ${this.opponentName}.`;
+      const count = this.myHand.filter((card) => this.isCardPlayable(card)).length;
+      return count ? `${count} playable ${count === 1 ? 'card' : 'cards'} highlighted · penalties draw automatically.`
+        : 'No match in your hand · draw 1.';
+    },
     opponentName() {
       return this.currentUser === "Timi" ? "Ejay" : "Timi";
     },
     isMyTurn() {
-      return this.gameState && this.gameState.currentTurn === this.currentUser;
+      return !this.gameLoading && !this.gameSaving && this.gameState?.status === "playing" && this.gameState.currentTurn === this.currentUser;
     },
     myHand() {
       if (!this.gameState) return [];
@@ -320,9 +344,14 @@ export default {
       return localStorage.getItem("ejay_user_icon") || "mdi-lightning-bolt";
     },
   },
+  watch: {
+    currentUser() { this.showShapePickerDialog = false; this.pendingCard20 = null; },
+    gameState() {
+      if (!this.isMyTurn) { this.showShapePickerDialog = false; this.pendingCard20 = null; }
+    },
+  },
   created() {
-    this.startNewMatch();
-    this.initSync();
+
   },
   beforeDestroy() {
     if (typeof this.firebaseUnsub === "function") {
@@ -336,40 +365,8 @@ export default {
     getUserIcon(name) {
       return name === "Timi" ? this.timiIcon : this.ejayIcon;
     },
-    initSync() {
-      // 1. Firebase Cloud Sync
-      this.firebaseUnsub = firebaseSync.subscribeToWhot((remoteState) => {
-        if (remoteState) {
-          this.gameState = remoteState;
-        }
-      }, this.roomId);
-
-      // 2. BroadcastChannel for local cross-tab sync
-      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-        try {
-          this.broadcastChannel = new BroadcastChannel("whot-game-sync");
-          this.broadcastChannel.onmessage = (event) => {
-            if (event.data && event.data.roomId === this.roomId) {
-              this.gameState = event.data.state;
-            }
-          };
-        } catch (e) {
-          // ignore
-        }
-      }
-    },
     syncState(nextState) {
-      this.gameState = nextState;
-      firebaseSync.updateWhotState(nextState, this.roomId);
-      if (this.broadcastChannel) {
-        this.broadcastChannel.postMessage({
-          roomId: this.roomId,
-          state: nextState,
-        });
-      }
-      if (nextState.status === "game_over" && nextState.winner) {
-        firebaseSync.recordGameWin(nextState.winner, "whot", this.roomId);
-      }
+      return this.saveGameSession(nextState);
     },
     startNewMatch() {
       const newState = whotGameLogic.initWhotGame(this.currentUser);
@@ -423,6 +420,26 @@ export default {
 </script>
 
 <style scoped>
+.turn-panel { border: 1px solid #454b5b; border-radius: 12px; background: #111725; }
+.turn-panel-active { border-color: #00e676; background: rgba(0, 230, 118, .08); }
+.hand-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; background: #111725; }
+.hand-controls.turn-panel-active { background: #102a25; }
+.hand-turn-copy { min-width: 0; }
+@media (max-width: 960px) {
+  .whot-game-container { padding-bottom: 140px !important; }
+  .hand-controls { position: fixed; left: 12px; right: 12px; bottom: 0; z-index: 12; margin-bottom: 0 !important; padding-bottom: calc(12px + env(safe-area-inset-bottom)) !important; box-shadow: 0 -8px 28px #0009; }
+  .hand-controls .v-btn { flex-shrink: 0; }
+  .opponent-cards-fan .whot-card-back { height: 60px; width: 44px; }
+}
+@media (max-width: 420px) {
+  .hand-controls { flex-wrap: wrap; gap: 6px; }
+  .hand-controls .v-btn { width: 100%; }
+  .whot-card { width: 64px; height: 96px; }
+}
+.whot-card-playable { outline: 2px solid #00e676; outline-offset: 2px; box-shadow: 0 0 14px #00e67640; }
+button.market-pile-container { border: 0; color: inherit; padding: 8px; border-radius: 12px; }
+button:focus-visible { outline: 3px solid #00e5ff; outline-offset: 4px; }
+button:disabled { cursor: default; }
 .whot-game-container {
   max-width: 900px;
   margin: 0 auto;
@@ -432,7 +449,6 @@ export default {
   background: radial-gradient(circle at center, rgba(30, 20, 50, 0.8) 0%, rgba(10, 14, 25, 0.95) 100%);
   border: 1px solid rgba(224, 64, 251, 0.25);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(12px);
 }
 
 .empty-whot-card {

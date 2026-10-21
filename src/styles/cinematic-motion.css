@@ -1,0 +1,50 @@
+/* Crisp at any display resolution: no looping video or oversized image downloads. */
+.cinema-page-enter-active { transition: opacity 380ms ease; }
+.cinema-page-leave-active { transition: opacity 140ms ease; }
+.cinema-page-enter, .cinema-page-leave-to { opacity: 0; }
+
+.app-shell .our-view-hero,
+.app-shell .greeting-banner {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.app-shell .our-view-hero::before,
+.app-shell .greeting-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(115deg, transparent 15%, rgba(239, 122, 167, .1) 42%, rgba(102, 211, 232, .08) 55%, transparent 80%);
+  transform: translateX(-100%);
+  animation: cinema-welcome-light 1.4s cubic-bezier(.18, .65, .3, 1) .1s both;
+}
+.app-shell .media-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  border: 1px solid rgba(159, 217, 238, .65);
+  box-shadow: inset 0 0 28px rgba(70, 183, 218, .09);
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+.app-shell .media-card:focus-within::after { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .app-shell .media-card:hover::after { opacity: 1; }
+  .app-shell .v-btn:not(.v-btn--disabled):not(.v-btn--icon) {
+    transition: background-color 180ms ease, color 180ms ease, box-shadow 220ms ease;
+  }
+}
+@keyframes cinema-welcome-light {
+  70% { transform: translateX(8%); opacity: 1; }
+  100% { transform: translateX(15%); opacity: .45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cinema-page-enter-active, .cinema-page-leave-active { transition: none; }
+  .app-shell .our-view-hero::before, .app-shell .greeting-banner::before { animation: none; transform: none; opacity: .45; }
+  .app-shell .media-card, .app-shell .media-card::after, .app-shell .media-card .v-image__image { transition: none !important; }
+}

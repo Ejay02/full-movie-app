@@ -1,5 +1,7 @@
 <template>
   <div class="word-duel-container pa-3 pa-sm-6">
+    <v-alert v-if="gameError" dense outlined type="warning" role="alert">{{ gameError }}</v-alert>
+    <div v-if="gameLoading || gameSaving" class="caption cyan--text mb-3" role="status">{{ gameLoading ? 'Restoring your match…' : 'Saving move…' }}</div>
     <!-- Header -->
     <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-4">
       <div class="d-flex align-center">
@@ -22,7 +24,7 @@
           text
           color="grey lighten-1"
           class="text-none"
-          @click="startNewCoopGame"
+          :disabled="gameLoading || gameSaving" @click="startNewCoopGame"
         >
           Daily Word
         </v-btn>
@@ -31,6 +33,10 @@
 
     <!-- Active Game Card -->
     <div v-if="duelState" class="word-duel-card pa-4 pa-sm-6 rounded-xl">
+      <div class="text-center white--text mb-3" role="status">
+        Playing as {{ currentUser }} · {{ userGuesses.length }}/6 guesses.
+        {{ isGameOver ? 'Your round is complete.' : 'Both players can guess — there is no waiting for a turn.' }}
+      </div>
       <!-- Challenge Info Banner -->
       <div class="challenge-info-bar text-center mb-4">
         <div class="caption grey--text mb-1">
@@ -165,7 +171,7 @@
 </template>
 
 <script>
-import firebaseSync from "@/services/firebaseSync";
+import gameSession from "@/services/gameSession";
 
 const DEFAULT_COUPLE_WORDS = [
   { word: "HEART", hint: "What beats faster when I see you" },
@@ -181,6 +187,7 @@ const DEFAULT_COUPLE_WORDS = [
 ];
 
 export default {
+  mixins: [gameSession("wordDuel", "duelState", function () { const pick = DEFAULT_COUPLE_WORDS[Math.floor(Math.random() * DEFAULT_COUPLE_WORDS.length)]; return { secretWord: pick.word, hint: pick.hint, creator: "Timi & Ejay Date Night", timiGuesses: [], ejayGuesses: [], timiStatus: "playing", ejayStatus: "playing", updatedAt: Date.now() }; })],
   name: "WordDuelGame",
   props: {
     currentUser: {
@@ -232,8 +239,7 @@ export default {
     },
   },
   created() {
-    this.startNewCoopGame();
-    this.initSync();
+
     if (typeof window !== "undefined") {
       window.addEventListener("keydown", this.handleKeyDown);
     }
@@ -250,37 +256,8 @@ export default {
     }
   },
   methods: {
-    initSync() {
-      this.firebaseUnsub = firebaseSync.subscribeToWordDuel((remoteState) => {
-        if (remoteState) {
-          this.duelState = remoteState;
-        } else {
-          this.startNewCoopGame();
-        }
-      }, this.roomId);
-
-      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-        try {
-          this.broadcastChannel = new BroadcastChannel("word-duel-sync");
-          this.broadcastChannel.onmessage = (event) => {
-            if (event.data && event.data.roomId === this.roomId) {
-              this.duelState = event.data.state;
-            }
-          };
-        } catch (e) {
-          // ignore
-        }
-      }
-    },
     syncState(nextState) {
-      this.duelState = nextState;
-      firebaseSync.updateWordDuelState(nextState, this.roomId);
-      if (this.broadcastChannel) {
-        this.broadcastChannel.postMessage({
-          roomId: this.roomId,
-          state: nextState,
-        });
-      }
+      return this.saveGameSession(nextState);
     },
     startNewCoopGame() {
       const pick = DEFAULT_COUPLE_WORDS[Math.floor(Math.random() * DEFAULT_COUPLE_WORDS.length)];
@@ -318,6 +295,8 @@ export default {
       this.currentGuess = "";
     },
     handleKeyDown(e) {
+      if (!this.duelState || this.gameLoading || this.gameSaving || this.showCreateChallengeDialog || /INPUT|TEXTAREA|SELECT/.test(e.target?.tagName) || e.target?.isContentEditable || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (["Enter", "Backspace"].includes(e.key)) e.preventDefault();
       if (this.isGameOver) return;
       if (e.key === "Enter") {
         this.submitGuess();
@@ -330,7 +309,7 @@ export default {
       }
     },
     handleKeyPress(key) {
-      if (this.isGameOver) return;
+      if (!this.duelState || this.gameLoading || this.gameSaving || this.isGameOver) return;
       if (key === "ENTER") {
         this.submitGuess();
       } else if (key === "BACK") {
@@ -342,7 +321,7 @@ export default {
       }
     },
     submitGuess() {
-      if (this.currentGuess.length !== 5) return;
+      if (!this.duelState || this.gameLoading || this.gameSaving || this.isGameOver || this.currentGuess.length !== 5) return;
       if (this.userGuesses.length >= 6) return;
 
       const guess = this.currentGuess.toUpperCase();
@@ -350,11 +329,11 @@ export default {
       const guessesKey = this.currentUser === "Timi" ? "timiGuesses" : "ejayGuesses";
       const statusKey = this.currentUser === "Timi" ? "timiStatus" : "ejayStatus";
 
+      if (!nextState[guessesKey]) nextState[guessesKey] = [];
       nextState[guessesKey].push(guess);
 
       if (guess === nextState.secretWord) {
         nextState[statusKey] = "won";
-        firebaseSync.recordGameWin(this.currentUser, "wordDuel", this.roomId);
       } else if (nextState[guessesKey].length >= 6) {
         nextState[statusKey] = "lost";
       }

@@ -257,6 +257,7 @@ export const scrabbleGameLogic = {
 
   passTurn(gameState, player) {
     if (!gameState) return this.initGame(player);
+    if (gameState.status !== "playing" || gameState.currentTurn !== player) return gameState;
     const nextPlayer = player === "Timi" ? "Ejay" : "Timi";
     const streak = (gameState.passStreak || 0) + 1;
     let status = gameState.status || "playing";

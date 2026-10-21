@@ -157,15 +157,6 @@ export function playCard(state, player, card, chosenSuitFor20 = null) {
   nextState.topCard = playedCard;
   nextState.calledSuit = null; // reset called suit
 
-  // Check victory condition
-  if (nextState[handKey].length === 0) {
-    nextState.status = "game_over";
-    nextState.winner = player;
-    nextState.lastActionMessage = `🎉 CHECK! ${player} played their last card and WON the game! 🏆`;
-    nextState.updatedAt = Date.now();
-    return nextState;
-  }
-
   // Handle Last Card warning message
   let actionMessage = `${player} played ${playedCard.number} of ${SUIT_META[playedCard.suit]?.label || playedCard.suit}.`;
   if (nextState[handKey].length === 1) {
@@ -189,21 +180,21 @@ export function playCard(state, player, card, chosenSuitFor20 = null) {
   else if (num === 2) {
     const drawCount = 2;
     drawCardsFromMarket(nextState, opponentHandKey, drawCount);
-    nextState.currentTurn = opponent;
-    nextState.lastActionMessage = `${actionMessage} (${opponent} picks 2 from Market! 📦)`;
+    nextState.currentTurn = player;
+    nextState.lastActionMessage = `${actionMessage} ${opponent} picks 2. ${player} plays again.`;
   }
   // Rule 5: Pick Three (opponent draws 3)
   else if (num === 5) {
     const drawCount = 3;
     drawCardsFromMarket(nextState, opponentHandKey, drawCount);
-    nextState.currentTurn = opponent;
-    nextState.lastActionMessage = `${actionMessage} (${opponent} picks 3 from Market! 📦📦)`;
+    nextState.currentTurn = player;
+    nextState.lastActionMessage = `${actionMessage} ${opponent} picks 3. ${player} plays again.`;
   }
   // Rule 14: General Market (opponent draws 1)
   else if (num === 14) {
     drawCardsFromMarket(nextState, opponentHandKey, 1);
-    nextState.currentTurn = opponent;
-    nextState.lastActionMessage = `${actionMessage} (General Market! ${opponent} draws 1 🛒)`;
+    nextState.currentTurn = player;
+    nextState.lastActionMessage = `${actionMessage} General Market: ${opponent} draws 1. ${player} plays again.`;
   }
   // Rule 20: WHOT! Wild card (player calls shape)
   else if (num === 20) {
@@ -219,6 +210,12 @@ export function playCard(state, player, card, chosenSuitFor20 = null) {
     nextState.lastActionMessage = actionMessage;
   }
 
+  // Apply penalties even when the special card is the winning card.
+  if (nextState[handKey].length === 0) {
+    nextState.status = "game_over";
+    nextState.winner = player;
+    nextState.lastActionMessage += ` ${player} played their last card and won!`;
+  }
   nextState.updatedAt = Date.now();
   return nextState;
 }

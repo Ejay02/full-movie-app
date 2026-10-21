@@ -1,5 +1,7 @@
 <template>
   <div class="scrabble-container pa-2 pa-sm-4">
+    <v-alert v-if="gameError" dense outlined type="warning" role="alert">{{ gameError }}</v-alert>
+    <div v-if="gameLoading || gameSaving" class="caption cyan--text mb-3" role="status">{{ gameLoading ? 'Restoring your match…' : 'Saving move…' }}</div>
     <!-- Header: Match Title, Player Switcher & Turn Indicator -->
     <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-3">
       <div class="d-flex align-center">
@@ -33,7 +35,7 @@
           </v-btn-toggle>
         </div>
 
-        <v-btn x-small outlined color="#FFD54F" class="text-none font-weight-bold ml-1" @click="resetGame">
+        <v-btn x-small outlined color="#FFD54F" class="text-none font-weight-bold ml-1" :disabled="gameLoading || gameSaving" @click="resetGame">
           <v-icon x-small left>mdi-restart</v-icon>
           New Game
         </v-btn>
@@ -127,7 +129,7 @@
             depressed
             color="#00E676"
             class="text-none font-weight-black black--text px-4 play-word-btn"
-            :disabled="pendingPlacements.length === 0"
+            :disabled="!isCurrentTurn || pendingPlacements.length === 0"
             @click="submitWord"
           >
             <v-icon left small>mdi-check-bold</v-icon>
@@ -150,6 +152,7 @@
             color="grey"
             class="text-none"
             @click="passTurn"
+            :disabled="!isCurrentTurn"
           >
             <v-icon left small>mdi-skip-next</v-icon>
             Pass Turn
@@ -210,7 +213,7 @@
           depressed
           color="#FFD54F"
           class="black--text font-weight-black px-6"
-          @click="resetGame"
+          :disabled="gameLoading || gameSaving" @click="resetGame"
         >
           Play Rematch 🔠
         </v-btn>
@@ -220,10 +223,11 @@
 </template>
 
 <script>
+import gameSession from "@/services/gameSession";
 import scrabbleGameLogic, { BOARD_MULTIPLIERS } from "@/services/scrabbleGameLogic";
-import firebaseSync from "@/services/firebaseSync";
 
 export default {
+  mixins: [gameSession("scrabble", "gameState", function () { return scrabbleGameLogic.initGame(this.currentUser); })],
   name: "ScrabbleGame",
   props: {
     currentUser: {
@@ -250,7 +254,7 @@ export default {
   },
   computed: {
     isCurrentTurn() {
-      return this.gameState && this.gameState.currentTurn === this.activePlayer;
+      return !this.gameLoading && !this.gameSaving && this.gameState?.status === "playing" && this.gameState.currentTurn === this.activePlayer;
     },
     rawRack() {
       if (!this.gameState) return [];
@@ -281,8 +285,10 @@ export default {
   watch: {
     currentUser(newVal) {
       if (newVal) this.activePlayer = newVal;
+      this.pendingPlacements = [];
     },
     activePlayer() {
+      this.pendingPlacements = [];
       // Clear pending selections when switching couch profile
       this.selectedRackTile = null;
       if (this.currentRack.length > 0) {
@@ -291,8 +297,7 @@ export default {
     },
   },
   created() {
-    this.startNewMatch();
-    this.initSync();
+
   },
   mounted() {
     if (this.currentRack.length > 0) {
@@ -308,51 +313,8 @@ export default {
     }
   },
   methods: {
-    initSync() {
-      this.firebaseUnsub = firebaseSync.subscribeToScrabble((remoteState) => {
-        if (remoteState) {
-          remoteState.board = scrabbleGameLogic.normalizeBoard(remoteState.board);
-          if (!Array.isArray(remoteState.timiRack)) remoteState.timiRack = [];
-          if (!Array.isArray(remoteState.ejayRack)) remoteState.ejayRack = [];
-          if (!Array.isArray(remoteState.bag)) remoteState.bag = [];
-          this.gameState = remoteState;
-          if (remoteState.status === "game_over") {
-            this.showGameOverDialog = true;
-          }
-        }
-      }, this.roomId);
-
-      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-        try {
-          this.broadcastChannel = new BroadcastChannel("scrabble-sync");
-          this.broadcastChannel.onmessage = (event) => {
-            if (event.data && event.data.roomId === this.roomId && event.data.state) {
-              const state = event.data.state;
-              state.board = scrabbleGameLogic.normalizeBoard(state.board);
-              this.gameState = state;
-              if (this.gameState.status === "game_over") {
-                this.showGameOverDialog = true;
-              }
-            }
-          };
-        } catch (e) {
-          // ignore
-        }
-      }
-    },
     syncState(nextState) {
-      this.gameState = nextState;
-      firebaseSync.updateScrabbleState(nextState, this.roomId);
-      if (this.broadcastChannel) {
-        this.broadcastChannel.postMessage({
-          roomId: this.roomId,
-          state: nextState,
-        });
-      }
-      if (nextState.status === "game_over" && nextState.winner) {
-        this.showGameOverDialog = true;
-        firebaseSync.recordGameWin(nextState.winner, "scrabble", this.roomId);
-      }
+      return this.saveGameSession(nextState);
     },
     startNewMatch() {
       const newState = scrabbleGameLogic.initGame(this.activePlayer);
@@ -515,7 +477,7 @@ export default {
       this.gameState[rackKey] = rack;
     },
     submitWord() {
-      if (!this.pendingPlacements.length) return;
+      if (!this.isCurrentTurn || !this.pendingPlacements.length) return;
       try {
         const nextState = scrabbleGameLogic.playTurn(
           this.gameState,
@@ -525,20 +487,18 @@ export default {
         this.pendingPlacements = [];
         this.selectedRackTile = null;
         this.syncState(nextState);
-        // Switch active couch player to the next turn automatically
-        this.activePlayer = nextState.currentTurn;
       } catch (err) {
         alert(err.message || "Invalid word placement!");
       }
     },
     passTurn() {
+      if (!this.isCurrentTurn) return;
       this.recallPendingTiles();
       const nextState = scrabbleGameLogic.passTurn(
         this.gameState,
         this.activePlayer
       );
       this.syncState(nextState);
-      this.activePlayer = nextState.currentTurn;
     },
   },
 };

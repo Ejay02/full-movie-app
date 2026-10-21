@@ -1,9 +1,12 @@
 <template>
   <v-app class="app-shell">
+    <cinema-atmosphere :quiet="!!$route.meta.hideNav" />
     <nav-bar v-if="!$route.meta.hideNav" />
 
     <v-main class="shell-main">
-      <router-view />
+      <transition name="cinema-page" mode="out-in">
+        <router-view />
+      </transition>
     </v-main>
     <foo-ter v-if="!$route.meta.hideFooter" />
 
@@ -20,6 +23,8 @@ import FooTer from "./components/FooTer.vue";
 import NavBar from "./components/NavBar.vue";
 import IdentityOnboardingDialog from "./components/IdentityOnboardingDialog.vue";
 import UserIconSelectorDialog from "./components/UserIconSelectorDialog.vue";
+import CinemaAtmosphere from "./components/CinemaAtmosphere.vue";
+import "./styles/cinematic-motion.css";
 
 export default {
   name: "App",
@@ -28,6 +33,7 @@ export default {
     FooTer,
     IdentityOnboardingDialog,
     UserIconSelectorDialog,
+    CinemaAtmosphere,
   },
 
   data: () => ({
@@ -37,6 +43,23 @@ export default {
 </script>
 
 <style>
+/* Vuetify typography utilities carry their own font declaration. */
+.v-application,
+.v-application [class*="text-h"],
+.v-application [class*="text-body"],
+.v-application [class*="text-subtitle"],
+.v-application .text-caption,
+.v-application .text-overline,
+.v-application .headline,
+.v-application .title,
+.v-application .subtitle-1,
+.v-application .subtitle-2,
+.v-application .body-1,
+.v-application .body-2,
+.v-application .caption,
+.v-application .overline {
+  font-family: "Inter", system-ui, sans-serif !important;
+}
 .app-shell {
   background: radial-gradient(
       circle at top left,
