@@ -19,27 +19,6 @@
   </v-container>
 
   <div class="home-page px-2 px-sm-4" v-else>
-    <!-- Personal Greeting Banner -->
-    <div class="greeting-banner pa-4 pa-sm-5 mb-4 d-flex align-center justify-space-between flex-wrap gap-3">
-      <div>
-        <h2 class="white--text text-h6 font-weight-bold mb-1">
-          {{ greetingText }}
-        </h2>
-        <span class="grey--text text-caption">Handcrafted for you with 🖤</span>
-      </div>
-
-      <v-btn
-        color="#00A3E0"
-        dark
-        rounded
-        class="text-none font-weight-bold px-4 surprise-btn"
-        @click="showSurpriseModal = true"
-      >
-        <v-icon left small>mdi-dice-5</v-icon>
-        Surprise Me 🎲
-      </v-btn>
-    </div>
-
     <!-- Continue Watching Section -->
     <ContinueWatchingSection />
 
@@ -96,8 +75,6 @@
 
     <upcoming-movies />
 
-    <!-- Surprise Me Modal -->
-    <SurpriseModal v-model="showSurpriseModal" :genres="genres" />
   </div>
 </template>
 <script>
@@ -105,48 +82,6 @@ import MovieCard from "../components/MovieCard.vue";
 import TvCard from "../components/TvCard.vue";
 import UpcomingMovies from "@/components/UpcomingMovies.vue";
 import ContinueWatchingSection from "@/components/ContinueWatchingSection.vue";
-import SurpriseModal from "@/components/SurpriseModal.vue";
-
-const TIME_BASED_GREETINGS = {
-  morning: [
-    "Rise and stream. What's on the watchlist?",
-    "Good morning. Ready for movie time?",
-    "Start the day with a story.",
-  ],
-  noon: [
-    "Lunch break 🍿 Pick a movie, grab a snack.",
-    "Noon. Pause the day, press play.",
-    "Midday escape. One quick watch?",
-  ],
-  afternoon: [
-    "Slow afternoon. Perfect for a movie.",
-    "Afternoon. Your couch is calling.",
-    "Take five. Make it a movie.",
-  ],
-  evening: [
-    "Lights down ✨ Movie night starts now.",
-    "Good evening. Movie night time!",
-    "Evening. Tonight's pick awaits.",
-  ],
-  lateNight: [
-    "Still up? One more movie 🍿",
-    "After hours. The best films play now.",
-    "Night owl mode. Press play.",
-  ],
-};
-
-function getRandomGreeting() {
-  const hour = new Date().getHours();
-  let bucket = "lateNight";
-  if (hour >= 5 && hour < 12) bucket = "morning";
-  else if (hour >= 12 && hour < 14) bucket = "noon";
-  else if (hour >= 14 && hour < 18) bucket = "afternoon";
-  else if (hour >= 18 && hour < 22) bucket = "evening";
-
-  const options = TIME_BASED_GREETINGS[bucket];
-  const index = Math.floor(Math.random() * options.length);
-  return options[index];
-}
 
 export default {
   components: {
@@ -154,7 +89,6 @@ export default {
     TvCard,
     UpcomingMovies,
     ContinueWatchingSection,
-    SurpriseModal,
   },
   data: function () {
     return {
@@ -164,8 +98,6 @@ export default {
       genres: [],
       errorMessage: "",
       loading: true,
-      showSurpriseModal: false,
-      greetingText: getRandomGreeting(),
     };
   },
   async mounted() {
@@ -234,23 +166,6 @@ export default {
 
 .home-page {
   padding-top: 12px;
-}
-
-.greeting-banner {
-  background: linear-gradient(135deg, rgba(14, 21, 38, 0.9), rgba(0, 45, 90, 0.45));
-  border: 1px solid rgba(0, 229, 255, 0.22);
-  border-radius: 18px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(14px);
-}
-
-.surprise-btn {
-  box-shadow: 0 0 20px rgba(0, 163, 224, 0.45) !important;
-  transition: transform 0.2s ease !important;
-}
-
-.surprise-btn:hover {
-  transform: scale(1.05) !important;
 }
 
 .section-header {

@@ -56,15 +56,6 @@
             class="rounded-lg"
           ></v-img>
         </v-btn>
-        <v-btn
-          text
-          class="ml-2 nav-link"
-          :class="{ 'nav-link--active': $route.path === '/our-view' && $route.query.tab === 'games' }"
-          to="/our-view?tab=games"
-        >
-          <v-icon left x-small color="#E040FB">mdi-gamepad-variant</v-icon>
-          Games 🎮
-        </v-btn>
         <!-- Views Dropdown (My View & Our View) -->
         <v-menu
           offset-y
@@ -114,7 +105,7 @@
               </v-list-item-icon>
               <v-list-item-content>
                 <v-list-item-title class="font-weight-bold" style="color: #E040FB;">Game Night 🎮</v-list-item-title>
-                <v-list-item-subtitle class="caption grey--text">WHOT! & Word Duel</v-list-item-subtitle>
+                <v-list-item-subtitle class="caption grey--text">Cards, crosswords & word games</v-list-item-subtitle>
               </v-list-item-content>
             </v-list-item>
 
