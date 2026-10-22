@@ -150,6 +150,7 @@
       <!-- User Avatar with Profile Switcher Menu -->
       <v-menu offset-y transition="slide-y-transition" rounded="lg" min-width="180">
         <template #activator="{ on, attrs }">
+          <v-btn icon class="ml-2" :aria-label="`${currentUser} profile menu`" v-bind="attrs" v-on="on">
           <v-badge
             bordered
             bottom
@@ -157,14 +158,12 @@
             dot
             offset-x="10"
             offset-y="10"
-            class="ml-2 cursor-pointer"
-            v-bind="attrs"
-            v-on="on"
           >
             <v-avatar size="40" class="nav-avatar">
-              <v-img src="../assets/20201010_063656.jpg"></v-img>
+              <v-img :src="$store.getters.avatarForUser(currentUser).src" :alt="`${currentUser} avatar`"></v-img>
             </v-avatar>
           </v-badge>
+          </v-btn>
         </template>
         <v-list dark dense class="profile-dropdown-list py-2">
           <v-list-item>
@@ -191,13 +190,13 @@
             <v-list-item-icon class="mr-3">
               <v-icon small color="#00E5FF">mdi-palette-swatch-outline</v-icon>
             </v-list-item-icon>
-            <v-list-item-title class="caption">Change Profile Icon 🎨</v-list-item-title>
+            <v-list-item-title class="caption">Change Avatar</v-list-item-title>
           </v-list-item>
           <v-list-item @click="openIdentityModal">
             <v-list-item-icon class="mr-3">
               <v-icon small color="#FFD700">mdi-party-popper</v-icon>
             </v-list-item-icon>
-            <v-list-item-title class="caption">Who is Watching? 🥂</v-list-item-title>
+            <v-list-item-title class="caption">Who is Watching?</v-list-item-title>
           </v-list-item>
           <v-list-item to="/our-view">
             <v-list-item-icon class="mr-3">

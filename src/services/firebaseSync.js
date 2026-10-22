@@ -39,6 +39,15 @@ if (firebaseConfig.apiKey && firebaseConfig.databaseURL) {
 }
 
 export const firebaseSync = {
+  subscribeToProfileAvatars(callback) {
+    if (!this.isConfigured()) return () => {};
+    return onValue(ref(db, 'movie_app/profileAvatars'), snapshot => callback(snapshot.val() || {}),
+      error => console.warn('Avatar sync unavailable:', error.message));
+  },
+  async setProfileAvatar(user, avatar) {
+    if (!this.isConfigured() || !['Timi', 'Ejay'].includes(user)) return;
+    await set(ref(db, `movie_app/profileAvatars/${user}`), avatar);
+  },
   subscribeToPlayback(callback, roomId, onError) {
     if (!this.isConfigured()) return () => {};
     return onValue(ref(db, `movie_app/rooms/${roomId}/playback`),

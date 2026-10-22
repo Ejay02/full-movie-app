@@ -1,237 +1,70 @@
 <template>
-  <v-dialog
-    v-model="showDialog"
-    persistent
-    max-width="520"
-    content-class="identity-dialog-wrapper"
-  >
-    <div class="onboarding-modal-card pa-6 pa-sm-8 text-center rounded-2xl">
-      <!-- Floating Confetti & Sparkles -->
-      <div class="floating-sparkles" aria-hidden="true">
-        <span class="sparkle sp-1">✨</span>
-        <span class="sparkle sp-2">🍿</span>
-        <span class="sparkle sp-3">👑</span>
-        <span class="sparkle sp-4">⚡</span>
-        <span class="sparkle sp-5">🥂</span>
-      </div>
-
-      <!-- Icon & Welcome Header -->
-      <div class="welcome-badge mb-3 d-inline-flex align-center justify-center">
-        <v-icon size="42" color="#FFD700" class="welcome-trophy">mdi-party-popper</v-icon>
-      </div>
-
-      <h2 class="white--text text-h5 font-weight-black mb-2 welcome-title">
-        Welcome Aboard! 🥂✨
-      </h2>
-      <p class="grey--text text-body-2 mb-6 max-w-400 mx-auto">
-        Just a quick identification before date night begins...
-        <br />
-        <strong class="white--text">Are you Timi or Ejay?</strong>
-      </p>
-
-      <!-- Interactive Animated Character Cards -->
-      <div class="identity-cards-row d-flex flex-column flex-sm-row justify-center gap-4 mb-4">
-        <!-- Timi Card -->
-        <div
-          class="character-card timi-card cursor-pointer pa-5 rounded-xl flex-1 text-center"
-          :class="{ 'card-hovered': selectedUser === 'Timi' }"
-          @click="chooseUser('Timi')"
-        >
-          <div class="avatar-ring timi-ring mb-3 mx-auto d-flex align-center justify-center">
-            <span class="avatar-emoji">👑</span>
-          </div>
-          <h3 class="white--text text-h6 font-weight-black mb-1">
-            Timi <span style="color: #E040FB;">👑</span>
-          </h3>
-          <p class="card-tagline mb-3">
-            Queen of Cozy Nights, Drama & Cinema Picks
-          </p>
-          <v-btn
-            rounded
-            depressed
-            color="#E040FB"
-            class="white--text font-weight-black text-none px-5"
-          >
-            I'm Timi 👑
-          </v-btn>
+  <v-dialog v-model="showDialog" persistent max-width="560" scrollable>
+    <v-card class="identity-setup pa-5 pa-sm-7" dark>
+      <div class="setup-topline"><span>YOUR SPACE, YOUR PROFILE</span><v-btn v-if="canClose" icon small aria-label="Close profile setup" @click="showDialog = false"><v-icon>mdi-close</v-icon></v-btn></div>
+      <template v-if="step === 1">
+        <h2>Who’s watching?</h2>
+        <p>Choose your name. Your games and shared room stay right where you left them.</p>
+        <div class="profile-options">
+          <button v-for="person in ['Timi', 'Ejay']" :key="person" type="button" :class="['profile-option', person.toLowerCase()]" @click="chooseUser(person)">
+            <img :src="$store.getters.avatarForUser(person).src" alt="" />
+            <strong>{{ person }}</strong><span>That’s me →</span>
+          </button>
         </div>
-
-        <!-- Ejay Card -->
-        <div
-          class="character-card ejay-card cursor-pointer pa-5 rounded-xl flex-1 text-center"
-          :class="{ 'card-hovered': selectedUser === 'Ejay' }"
-          @click="chooseUser('Ejay')"
-        >
-          <div class="avatar-ring ejay-ring mb-3 mx-auto d-flex align-center justify-center">
-            <span class="avatar-emoji">🍕</span>
-          </div>
-          <h3 class="white--text text-h6 font-weight-black mb-1">
-            Ejay <span style="color: #00E5FF;">⚡</span>
-          </h3>
-          <p class="card-tagline mb-3">
-            Master of Action, Thrillers & Night Snacks
-          </p>
-          <v-btn
-            rounded
-            depressed
-            color="#00E5FF"
-            class="black--text font-weight-black text-none px-5"
-          >
-            I'm Ejay ⚡
-          </v-btn>
-        </div>
-      </div>
-
-      <div class="caption grey--text text--darken-1">
-        You can easily switch who is watching at any time from the top navigation! 🔄
-      </div>
-    </div>
+      </template>
+      <template v-else>
+        <div class="setup-preview"><img :src="preview.src" alt="Your selected avatar" /><div><h2>Make it yours, {{ selectedUser }}.</h2><p>Pick the face you’ll use around here.</p></div></div>
+        <avatar-choices v-model="selectedAvatar" />
+        <div class="setup-actions"><v-btn text class="text-none" @click="step = 1">Back</v-btn><v-btn color="cyan" class="black--text text-none font-weight-bold" :disabled="!selectedAvatar" @click="finishSetup">Continue as {{ selectedUser }}</v-btn></div>
+      </template>
+      <p v-if="error" role="alert" class="amber--text mt-3">{{ error }}</p>
+      <small class="setup-footnote">Change your avatar any time from your profile menu.</small>
+    </v-card>
   </v-dialog>
 </template>
-
 <script>
+import AvatarChoices from './AvatarChoices.vue';
+import { avatarById, validProfile } from '@/services/profileAvatars';
 export default {
-  name: "IdentityOnboardingDialog",
-  data() {
-    return {
-      showDialog: false,
-      selectedUser: null,
-    };
-  },
+  name: 'IdentityOnboardingDialog',
+  components: { AvatarChoices },
+  data: () => ({ showDialog: false, step: 1, selectedUser: null, selectedAvatar: null, canClose: false, error: '' }),
+  computed: { preview() { return avatarById(this.selectedAvatar) || avatarById('cinema-kid'); } },
   mounted() {
-    this.checkIdentity();
-    window.addEventListener("open-identity-selector", () => {
-      this.showDialog = true;
-    });
+    let complete = false;
+    try { complete = localStorage.getItem('profile-setup-v2') === 'complete' && validProfile(localStorage.getItem('our_view_user')); } catch (_) { /* Ask for a session profile. */ }
+    this.canClose = complete;
+    this.showDialog = !complete;
+    window.addEventListener('open-identity-selector', this.open);
   },
+  beforeDestroy() { window.removeEventListener('open-identity-selector', this.open); },
   methods: {
-    checkIdentity() {
-      // Check if user has already identified themselves
-      const stored = localStorage.getItem("our_view_user");
-      if (!stored) {
-        // Show after brief entrance delay
-        setTimeout(() => {
-          this.showDialog = true;
-        }, 500);
-      }
-    },
+    open() { this.step = 1; this.selectedUser = null; this.selectedAvatar = null; this.error = ''; this.showDialog = true; },
     chooseUser(user) {
+      if (!validProfile(user)) return;
       this.selectedUser = user;
-      localStorage.setItem("our_view_user", user);
-
-      // Notify entire app of user identity choice
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("user-identity-changed", { detail: user })
-        );
-      }
-
-      // Smooth exit
-      setTimeout(() => {
-        this.showDialog = false;
-      }, 400);
+      this.selectedAvatar = this.$store.state.profileAvatars[user]?.id || null;
+      this.step = 2;
+    },
+    finishSetup() {
+      if (!validProfile(this.selectedUser) || !avatarById(this.selectedAvatar)) return;
+      this.$store.dispatch('saveProfileAvatar', { user: this.selectedUser, avatarId: this.selectedAvatar });
+      try {
+        localStorage.setItem('our_view_user', this.selectedUser);
+        localStorage.setItem('profile-setup-v2', 'complete');
+      } catch (_) { this.error = 'This browser could not remember your profile. You can still continue this visit.'; }
+      window.dispatchEvent(new CustomEvent('user-identity-changed', { detail: this.selectedUser }));
+      this.canClose = true;
+      this.showDialog = false;
     },
   },
 };
 </script>
-
 <style scoped>
-.identity-dialog-wrapper {
-  overflow: visible !important;
-}
-
-.onboarding-modal-card {
-  background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0d0f1a 100%);
-  border: 2px solid rgba(255, 215, 0, 0.4);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(224, 64, 251, 0.2);
-  position: relative;
-  overflow: hidden;
-}
-
-.welcome-title {
-  letter-spacing: 0.5px;
-  background: linear-gradient(135deg, #ffffff 0%, #ffd700 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.character-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1.5px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  position: relative;
-}
-
-.character-card:hover {
-  transform: translateY(-8px) scale(1.03);
-}
-
-.timi-card:hover,
-.timi-card.card-hovered {
-  border-color: #FF4081;
-  background: radial-gradient(circle at top, rgba(255, 64, 129, 0.18) 0%, rgba(13, 15, 26, 0.8) 100%);
-  box-shadow: 0 12px 30px rgba(255, 64, 129, 0.35);
-}
-
-.ejay-card:hover,
-.ejay-card.card-hovered {
-  border-color: #00E5FF;
-  background: radial-gradient(circle at top, rgba(0, 229, 255, 0.18) 0%, rgba(13, 15, 26, 0.8) 100%);
-  box-shadow: 0 12px 30px rgba(0, 229, 255, 0.35);
-}
-
-.avatar-ring {
-  width: 68px;
-  height: 68px;
-  border-radius: 50%;
-  position: relative;
-  transition: transform 0.3s ease;
-}
-
-.character-card:hover .avatar-ring {
-  transform: scale(1.1) rotate(6deg);
-}
-
-.timi-ring {
-  background: linear-gradient(135deg, rgba(255, 64, 129, 0.3) 0%, rgba(224, 64, 251, 0.2) 100%);
-  border: 2px solid #FF4081;
-  box-shadow: 0 0 16px rgba(255, 64, 129, 0.5);
-}
-
-.ejay-ring {
-  background: linear-gradient(135deg, rgba(0, 229, 255, 0.3) 0%, rgba(0, 230, 118, 0.2) 100%);
-  border: 2px solid #00E5FF;
-  box-shadow: 0 0 16px rgba(0, 229, 255, 0.5);
-}
-
-.avatar-emoji {
-  font-size: 30px;
-}
-
-.card-tagline {
-  font-size: 12px;
-  color: #9ca3af;
-  min-height: 36px;
-  line-height: 1.35;
-}
-
-/* Floating Sparkle Animation */
-.floating-sparkles .sparkle {
-  position: absolute;
-  font-size: 20px;
-  animation: floatSparkle 4s infinite ease-in-out;
-  opacity: 0.7;
-  pointer-events: none;
-}
-
-.sp-1 { top: 15px; left: 20px; animation-delay: 0s; }
-.sp-2 { top: 25px; right: 25px; animation-delay: 1s; }
-.sp-3 { bottom: 25px; left: 30px; animation-delay: 2s; }
-.sp-4 { bottom: 20px; right: 30px; animation-delay: 1.5s; }
-.sp-5 { top: 50%; right: 10px; animation-delay: 2.5s; }
-
-@keyframes floatSparkle {
-  0%, 100% { transform: translateY(0) scale(0.9); opacity: 0.4; }
-  50% { transform: translateY(-10px) scale(1.2); opacity: 0.9; }
-}
+.identity-setup { background: radial-gradient(ellipse at top right, #203d55, #11192c 65%) !important; border: 1px solid #536782; border-radius: 24px !important; max-height: 90vh; overflow-y: auto; }
+.setup-topline { display: flex; justify-content: space-between; align-items: center; min-height: 32px; margin-bottom: 18px; }.setup-topline span { color: #84dcd9; font-size: 10px; letter-spacing: 2px; font-weight: 700; }
+.identity-setup h2 { font-size: 27px; line-height: 1.2; font-weight: 800; letter-spacing: -.8px; }.identity-setup p { color: #b2c0d4; line-height: 1.6; font-size: 13px; margin-top: 10px; }
+.profile-options { display: flex; gap: 16px; margin: 25px 0; }.profile-option { flex: 1; border: 2px solid #3b4b64; border-radius: 18px; padding: 22px 12px; background: #18233a; color: #fff; }.profile-option img { width: 84px; height: 84px; object-fit: cover; border-radius: 50%; margin-bottom: 12px; }.profile-option strong { display: block; font-size: 22px; }.profile-option span { display: block; color: #a8b9cf; margin-top: 6px; font-size: 12px; }.profile-option.timi:hover { border-color: #f78bbc; }.profile-option.ejay:hover { border-color: #68dedc; }
+.setup-preview { display: flex; align-items: center; gap: 16px; }.setup-preview img { width: 80px; height: 80px; object-fit: cover; border-radius: 50%; border: 3px solid #78e4db; }.setup-preview h2 { font-size: 23px; }.setup-preview p { margin: 6px 0 0; }
+.setup-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; }.setup-footnote { display: block; color: #8ca1bb; font-size: 11px; margin-top: 22px; text-align: center; }button:focus-visible { outline: 3px solid #f2c078; outline-offset: 3px; }
 </style>

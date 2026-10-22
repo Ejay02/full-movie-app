@@ -9,6 +9,12 @@ export function normalizeGame(type, state) {
     : type === "wordDuel" ? ["timiGuesses", "ejayGuesses"] : type === "scrabble" ? ["timiRack", "ejayRack", "bag", "moveHistory"] : [];
   arrayKeys.forEach((key) => { result[key] = Object.values(result[key] || {}); });
   if (type === "crossword") result.solved = result.solved || {};
+  if (type === "crosswordGo") {
+    result.filled = result.filled || {};
+    result.solved = result.solved || {};
+    result.scores = { Timi: 0, Ejay: 0, ...result.scores };
+    result.rack = Object.values(result.rack || {});
+  }
   if (type === "scrabble") {
     result.board = Array.from({ length: 9 }, (_, r) =>
       Array.from({ length: 9 }, (_, c) => result.board?.[r]?.[c] || null));

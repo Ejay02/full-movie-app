@@ -8,9 +8,9 @@
     <div class="video-stage">
       <div v-if="loadingSource" class="source-loading" role="status">Finding your stream…</div>
       <video v-if="nativeSource" ref="video" controls playsinline preload="metadata"
-        @loadedmetadata="restorePlayback" @play="publish('play')"
+        @loadedmetadata="onVideoReady" @durationchange="onVideoReady" @canplay="onVideoReady" @play="publish('play')"
         @pause="publish('pause')" @seeked="publish('seeked')" @timeupdate="heartbeat" @ended="publish('ended')"
-        @error="error = 'The video could not load. Retry the stream or choose a backup server.'">
+        @error="error = 'The video could not load. Retry the stream.'">
         <track v-for="track in nativeSource.subtitleTracks || []" :key="track.src" kind="subtitles"
           :src="track.src" :srclang="track.srclang" :label="track.label" :default="!!track.default" />
       </video>
@@ -37,7 +37,7 @@ import { mediaKey, playbackPosition, acceptPlayerEvent } from "@/services/playba
 export default {
   props: { media: Object, provider: String, url: String, roomId: String, currentUser: String },
   data: () => ({ connected: false, offset: 0, shared: null, error: "", needsGesture: false,
-    resolvedSource: null, loadingSource: false, sourceRequest: null, sourceGeneration: 0, hls: null, closing: false,
+    resolvedSource: null, loadingSource: false, sourceReady: false, playbackLoaded: false, sourceRequest: null, sourceGeneration: 0, hls: null, closing: false,
     clientId: `${Date.now()}-${Math.random().toString(36).slice(2)}`, applyingUntil: 0,
     lastSent: 0, stops: [], embedStart: null, embedPlaying: false, tick: Date.now(), timer: null }),
   computed: {
@@ -71,6 +71,7 @@ export default {
     this.stops.push(firebaseSync.subscribeToClock((offset) => { this.offset = offset; }));
     this.stops.push(firebaseSync.subscribeToConnection((connected) => { this.connected = connected; }));
     this.stops.push(firebaseSync.subscribeToPlayback((state) => {
+      this.playbackLoaded = true;
       if (!state || state.mediaKey !== this.key || !Number.isFinite(state.position) || !Number.isFinite(state.updatedAt)) return;
       this.shared = state;
       if (state.clientId !== this.clientId && this.nativeSource) this.restorePlayback();
@@ -88,6 +89,7 @@ export default {
   },
   methods: {
     async loadSource() {
+      this.sourceReady = false;
       const generation = ++this.sourceGeneration;
       if (this.sourceRequest) this.sourceRequest.abort();
       this.error = '';
@@ -135,7 +137,7 @@ export default {
     },
     async togglePlayback() {
       const video = this.$refs.video;
-      if (!video || !video.readyState) { this.error = 'The video is still loading. Try play again in a moment.'; return; }
+      if (!video || !video.readyState || !this.playbackLoaded || !this.sourceReady) { this.error = 'The video is still loading. Try play again in a moment.'; return; }
       const playing = !this.shared?.playing;
       await this.send(video.currentTime, playing);
       await this.restorePlayback();
@@ -143,6 +145,12 @@ export default {
     formatTime(time) {
       const seconds = Math.max(0, Math.floor(time));
       return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+    },
+    onVideoReady() {
+      const video = this.$refs.video;
+      if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+      this.sourceReady = true;
+      this.restorePlayback();
     },
     async restorePlayback() {
       const video = this.$refs.video;
@@ -166,7 +174,7 @@ export default {
     },
     publish() {
       const video = this.$refs.video;
-      if (!video || !video.readyState || this.closing || this.loadingSource) return;
+      if (!video || !video.readyState || this.closing || this.loadingSource || !this.sourceReady || !this.playbackLoaded) return;
       // Ignore the echo of a remote command, but keep an immediate user override.
       const playing = !video.paused && !video.ended;
       if (Date.now() < this.applyingUntil && this.shared && playing === this.shared.playing &&

@@ -1,6 +1,7 @@
 import Vue from "vue";
 import Vuex from "vuex";
 import firebaseSync from "@/services/firebaseSync";
+import { AVATAR_STORAGE_KEY, avatarById, readAvatars, mergeAvatar, validProfile } from '@/services/profileAvatars';
 
 Vue.use(Vuex);
 
@@ -228,6 +229,7 @@ function normalizeWatchItem(item) {
 
 const store = new Vuex.Store({
   state: {
+    profileAvatars: readAvatars(),
     continueWatching: loadContinueWatching(),
     myView: loadMyView(),
     watched: loadWatched(),
@@ -235,6 +237,7 @@ const store = new Vuex.Store({
     nextDateNight: loadNextDateNight(),
   },
   getters: {
+    avatarForUser: (state) => (user) => avatarById(state.profileAvatars[user]?.id) || avatarById('cinema-kid'),
     continueWatchingItems(state) {
       return state.continueWatching;
     },
@@ -276,6 +279,10 @@ const store = new Vuex.Store({
       ),
   },
   mutations: {
+    SET_PROFILE_AVATAR(state, { user, avatar }) {
+      state.profileAvatars = mergeAvatar(state.profileAvatars, user, avatar);
+      try { localStorage.setItem(AVATAR_STORAGE_KEY, JSON.stringify(state.profileAvatars)); } catch (_) { /* Session choice still works when storage is unavailable. */ }
+    },
     RECORD_CONTINUE_WATCHING(state, payload) {
       const item = normalizeWatchItem(payload);
       const existingIndex = state.continueWatching.findIndex(
@@ -415,6 +422,13 @@ const store = new Vuex.Store({
     },
   },
   actions: {
+    saveProfileAvatar({ commit }, { user, avatarId }) {
+      if (!validProfile(user) || !avatarById(avatarId)) return;
+      const avatar = { id: avatarId, updatedAt: Date.now() };
+      commit('SET_PROFILE_AVATAR', { user, avatar });
+      // Local selection takes effect immediately, even when the room is offline.
+      firebaseSync.setProfileAvatar(user, avatar).catch(error => console.warn('Avatar sync unavailable:', error.message));
+    },
     recordContinueWatching({ commit }, payload) {
       commit("RECORD_CONTINUE_WATCHING", payload);
     },

@@ -25,6 +25,8 @@ import IdentityOnboardingDialog from "./components/IdentityOnboardingDialog.vue"
 import UserIconSelectorDialog from "./components/UserIconSelectorDialog.vue";
 import CinemaAtmosphere from "./components/CinemaAtmosphere.vue";
 import "./styles/cinematic-motion.css";
+import firebaseSync from '@/services/firebaseSync';
+import { AVATAR_STORAGE_KEY, readAvatars } from '@/services/profileAvatars';
 
 export default {
   name: "App",
@@ -36,9 +38,21 @@ export default {
     CinemaAtmosphere,
   },
 
-  data: () => ({
-    //
-  }),
+  data: () => ({ stopAvatarSync: null }),
+  mounted() {
+    this.stopAvatarSync = firebaseSync.subscribeToProfileAvatars(this.receiveAvatars);
+    window.addEventListener('storage', this.receiveAvatarStorage);
+  },
+  beforeDestroy() {
+    if (this.stopAvatarSync) this.stopAvatarSync();
+    window.removeEventListener('storage', this.receiveAvatarStorage);
+  },
+  methods: {
+    receiveAvatars(profiles) {
+      Object.entries(profiles).forEach(([user, avatar]) => this.$store.commit('SET_PROFILE_AVATAR', { user, avatar }));
+    },
+    receiveAvatarStorage(event) { if (event.key === AVATAR_STORAGE_KEY) this.receiveAvatars(readAvatars()); },
+  },
 };
 </script>
 

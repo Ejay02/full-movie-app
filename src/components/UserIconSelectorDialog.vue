@@ -5,7 +5,7 @@
         <div class="d-flex align-center">
           <v-icon color="#FFD700" class="mr-2">mdi-palette-swatch-outline</v-icon>
           <h3 class="white--text text-h6 font-weight-black mb-0">
-            Choose Your Profile Icon
+            Choose Your Avatar
           </h3>
         </div>
         <v-btn icon small dark @click="showDialog = false">
@@ -14,7 +14,7 @@
       </div>
 
       <p class="grey--text text-caption mb-4">
-        Select which icon represents <strong>{{ activeUser }}</strong> across the app and games:
+        Choose an avatar for <strong>{{ activeUser }}</strong> — your choice stays saved:
       </p>
 
       <!-- Active User Tab Switcher -->
@@ -43,6 +43,8 @@
         </v-btn>
       </div>
 
+      <avatar-choices v-model="selectedAvatar" />
+      <details class="mb-4"><summary class="caption grey--text">Game badge</summary>
       <!-- Icon Choices Grid -->
       <div class="icons-grid d-flex flex-wrap justify-center gap-3 mb-6">
         <div
@@ -59,6 +61,7 @@
         </div>
       </div>
 
+      </details>
       <div class="d-flex justify-end gap-2">
         <v-btn text color="grey" class="text-none" @click="showDialog = false">
           Close
@@ -69,7 +72,7 @@
           class="black--text font-weight-bold text-none px-6"
           @click="saveAndClose"
         >
-          Save Icon ✨
+          Save Avatar
         </v-btn>
       </div>
     </v-card>
@@ -77,6 +80,8 @@
 </template>
 
 <script>
+import AvatarChoices from "./AvatarChoices.vue";
+import { avatarById } from "@/services/profileAvatars";
 export const AVAILABLE_ICONS = [
   { name: "mdi-crown", label: "Crown 👑" },
   { name: "mdi-lightning-bolt", label: "Lightning ⚡" },
@@ -94,26 +99,30 @@ export const AVAILABLE_ICONS = [
 
 export default {
   name: "UserIconSelectorDialog",
+  components: { AvatarChoices },
   data() {
     return {
       showDialog: false,
+      selectedAvatar: "cinema-kid",
       activeUser: "Timi",
       currentTimiIcon: localStorage.getItem("timi_user_icon") || "mdi-crown",
       currentEjayIcon: localStorage.getItem("ejay_user_icon") || "mdi-lightning-bolt",
       availableIcons: AVAILABLE_ICONS,
     };
   },
-  mounted() {
-    window.addEventListener("open-icon-selector", (e) => {
-      if (e && e.detail) {
-        this.activeUser = e.detail;
-      }
-      this.currentTimiIcon = localStorage.getItem("timi_user_icon") || "mdi-crown";
-      this.currentEjayIcon = localStorage.getItem("ejay_user_icon") || "mdi-lightning-bolt";
-      this.showDialog = true;
-    });
+  watch: {
+    activeUser() { this.selectedAvatar = this.$store.getters.avatarForUser(this.activeUser).id; },
   },
+  mounted() { window.addEventListener("open-icon-selector", this.openSelector); },
+  beforeDestroy() { window.removeEventListener("open-icon-selector", this.openSelector); },
   methods: {
+    openSelector(event) {
+      this.activeUser = ['Timi', 'Ejay'].includes(event?.detail) ? event.detail : (localStorage.getItem('our_view_user') || 'Timi');
+      this.selectedAvatar = this.$store.getters.avatarForUser(this.activeUser).id;
+      this.currentTimiIcon = localStorage.getItem('timi_user_icon') || 'mdi-crown';
+      this.currentEjayIcon = localStorage.getItem('ejay_user_icon') || 'mdi-lightning-bolt';
+      this.showDialog = true;
+    },
     getActiveColor() {
       return this.activeUser === "Timi" ? "#E040FB" : "#00E5FF";
     },
@@ -130,6 +139,8 @@ export default {
       }
     },
     saveAndClose() {
+      if (!avatarById(this.selectedAvatar)) return;
+      this.$store.dispatch('saveProfileAvatar', { user: this.activeUser, avatarId: this.selectedAvatar });
       localStorage.setItem("timi_user_icon", this.currentTimiIcon);
       localStorage.setItem("ejay_user_icon", this.currentEjayIcon);
 

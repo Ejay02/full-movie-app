@@ -32,6 +32,8 @@ const sync = load('src/services/playbackSync.js');
 const fakeCloud = { subscribeToGame() { return () => {}; } };
 const games = load('src/services/gameSession.js', { './firebaseSync': fakeCloud });
 const crossword = load('src/services/crosswordLogic.js');
+const pictures = load('src/services/pictureCrosswordLogic.js');
+const avatars = load('src/services/profileAvatars.js');
 const streams = require('../server/streamSource');
 const clone = (value) => JSON.parse(JSON.stringify(value));
 function whotState(number) {
@@ -42,6 +44,85 @@ function whotState(number) {
   return state;
 }
 async function main() {
+  await test('Avatar choices persist per person and stale cloud updates cannot replace them', () => {
+    let profiles = avatars.mergeAvatar({}, 'Timi', { id: 'hearts', updatedAt: 20 });
+    profiles = avatars.mergeAvatar(profiles, 'Ejay', { id: 'ninja', updatedAt: 30 });
+    profiles = avatars.mergeAvatar(profiles, 'Timi', { id: 'blue-moon', updatedAt: 10 });
+    assert.equal(profiles.Timi.id, 'hearts'); assert.equal(profiles.Ejay.id, 'ninja');
+    assert.equal(avatars.mergeAvatar(profiles, 'Timi', { id: 'https://unknown.example/image', updatedAt: 50 }), profiles);
+    storage.set(avatars.AVATAR_STORAGE_KEY, JSON.stringify(profiles));
+    assert.equal(avatars.readAvatars().Timi.id, 'hearts');
+    for (const avatar of avatars.AVATARS) assert.ok(fs.existsSync(path.join(root, 'public', avatar.src)), avatar.id);
+  });
+  await test('Picture crosswords have picture and word clues, valid crossings, and playable racks', () => {
+    for (let i = 0; i < pictures.PICTURE_CROSSWORDS.length; i++) {
+      const puzzle = pictures.PICTURE_CROSSWORDS[i];
+      assert.ok(puzzle.cells.some(cell => cell.image));
+      assert.ok(puzzle.cells.some(cell => cell.kind === 'clue' && !cell.image));
+      for (const word of puzzle.words) assert.equal(word.cells.map(key => puzzle.cells[Number(key)].answer).join(''), word.answer);
+      let state = pictures.newPictureCrossword(i), rounds = 0;
+      while (state.status === 'playing' && rounds++ < 40) {
+        const used = new Set();
+        const placements = state.rack.map((letter, rackIndex) => {
+          const cell = puzzle.cells.find(cell => cell.kind === 'letter' && cell.answer === letter && !state.filled[cell.key] && !used.has(cell.key));
+          assert.ok(cell, 'every dealt tile can be placed'); used.add(cell.key);
+          return { cellKey: cell.key, rackIndex };
+        });
+        const before = JSON.stringify(state), player = state.currentTurn;
+        const result = pictures.playPictureTurn(state, player, placements);
+        assert.equal(JSON.stringify(state), before, 'moves must not mutate shared state');
+        assert.ok(result.state); state = games.normalizeGame('crosswordGo', result.state);
+        assert.notEqual(state.currentTurn, player);
+      }
+      assert.equal(state.status, 'game_over');
+      assert.equal(Object.keys(state.filled).length, 36);
+      assert.equal(Object.keys(state.solved).length, 24);
+      assert.equal(state.scores.Timi + state.scores.Ejay, 36 + 24 * 5);
+      games.cacheGame('crosswordGo', 'picture-test', state);
+      assert.equal(games.readGame('crosswordGo', 'picture-test').scores.Timi, state.scores.Timi);
+    }
+  });
+  await test('Picture crossword rejects illegal turns and duplicate or incorrect tiles', () => {
+    const state = pictures.newPictureCrossword();
+    const cell = pictures.picturePuzzle(state).cells.find(cell => cell.answer === state.rack[0]);
+    const move = { cellKey: cell.key, rackIndex: 0 };
+    assert.ok(pictures.playPictureTurn(state, 'Ejay', [move]).error);
+    assert.ok(pictures.playPictureTurn(state, 'Timi', [move, move]).error);
+    const wrong = pictures.picturePuzzle(state).cells.find(cell => cell.kind === 'letter' && cell.answer !== state.rack[0]);
+    assert.ok(pictures.playPictureTurn(state, 'Timi', [{ ...move, cellKey: wrong.key }]).error);
+    const passed = pictures.passPictureTurn(state, 'Timi');
+    assert.equal(passed.currentTurn, 'Ejay'); assert.equal(passed.scores.Timi, 0);
+    assert.equal(pictures.passPictureTurn(state, 'Ejay'), null);
+  });
+  await test('Home Resume opens the player directly with the saved episode', () => {
+    const component = load('src/components/ContinueWatchingSection.vue').default;
+    const movie = component.methods.resumeRoute({ mediaType: 'movie', mediaId: 42 });
+    assert.equal(movie.path, '/watch/movie/42');
+    const tv = component.methods.resumeRoute({ mediaType: 'tv', mediaId: 42, season: 2, episode: 4 });
+    assert.equal(tv.path, '/watch/tv/42'); assert.equal(tv.query.season, '2'); assert.equal(tv.query.episode, '4');
+  });
+  await test('Solo resume survives early zero events and waits for usable HLS duration', () => {
+    const view = load('src/views/WatchView.vue', { '@/data/personalMediaLibrary': { getPersonalMediaSource: () => null } }).default;
+    const player = { readyState: 1, currentTime: 0, duration: Infinity };
+    const writes = [];
+    const component = { $refs: { player }, hasRestoredPosition: false, mediaType: 'movie',
+      continueWatchingEntry: { currentTime: 125 }, recordContinueWatching: value => writes.push(value), clearBufferingCheck() {} };
+    view.methods.handlePlay.call(component); view.methods.handleTimeUpdate.call(component);
+    assert.equal(writes.length, 0, 'initial zero must not overwrite saved time');
+    view.methods.handleLoadedMetadata.call(component);
+    assert.equal(component.hasRestoredPosition, false);
+    player.duration = 500;
+    view.methods.handleLoadedMetadata.call(component);
+    assert.equal(player.currentTime, 125); assert.equal(component.hasRestoredPosition, true);
+    player.currentTime = 151;
+    view.methods.saveCurrentProgress.call(component);
+    assert.equal(writes[0].currentTime, 151);
+    component.hasRestoredPosition = false; player.currentTime = 0;
+    component.mediaType = 'tv'; component.selectedSeason = 2; component.selectedEpisode = 2;
+    component.continueWatchingEntry = { currentTime: 125, season: 2, episode: 1 };
+    view.methods.handleLoadedMetadata.call(component);
+    assert.equal(player.currentTime, 0, 'a new episode must start at zero');
+  });
   await test('Crossword grids have matching intersections and no unintended words', () => {
     for (const puzzle of crossword.CROSSWORDS) {
       const grid = Array.from({ length: puzzle.rows }, () => Array(puzzle.cols).fill(''));
@@ -161,7 +242,7 @@ async function main() {
       '@/services/playbackSync': sync,
     }).default;
     const video = { readyState: 1, currentTime: 0, duration: 100, pause() { this.paused = true; }, paused: false };
-    const component = { $refs: { video }, shared: { position: 35, playing: false, updatedAt: Date.now() }, offset: 0, applyingUntil: 0 };
+    const component = { $refs: { video }, sourceReady: true, playbackLoaded: true, shared: { position: 35, playing: false, updatedAt: Date.now() }, offset: 0, applyingUntil: 0 };
     await player.methods.restorePlayback.call(component);
     assert.equal(video.currentTime, 35); assert.equal(video.paused, true);
     player.methods.publish.call(component);

@@ -77,7 +77,7 @@
               depressed
               class="resume-btn text-none"
             >
-              Resume
+              {{ item.currentTime > 0 ? 'Resume' : 'Watch' }}
             </v-btn>
           </div>
         </v-card>
@@ -121,7 +121,7 @@ export default {
       return "";
     },
     resumeRoute(item) {
-      const basePath = item.mediaType === "tv" ? `/show/${item.mediaId}` : `/movie/${item.mediaId}`;
+      const basePath = `/watch/${item.mediaType}/${item.mediaId}`;
       const query = { autoplay: "1" };
       
       if (item.mediaType === "tv" && item.season) {

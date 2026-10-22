@@ -42,51 +42,8 @@
         </div>
 
         <div class="d-flex align-center flex-wrap gap-2">
-          <!-- Server toggle -->
-          <div class="d-flex align-center mr-3">
-            <span class="grey--text text-caption mr-2 hidden-xs-only">Server:</span>
-            <v-btn-toggle v-model="activeProviderId" mandatory dense color="error" class="theater-server-toggle">
-              <v-btn
-                v-for="prov in availableProviders"
-                :key="prov.id"
-                :value="prov.id"
-                x-small
-                text
-                class="text-none font-weight-bold"
-              >
-                {{ prov.name }}
-              </v-btn>
-            </v-btn-toggle>
-          </div>
-
-          <!-- Next Server quick button -->
-          <v-btn
-            small
-            depressed
-            color="rgba(0, 229, 255, 0.15)"
-            class="cyan--text text--accent-2 text-none font-weight-bold mr-2"
-            title="Switch to next stream server"
-            @click="autoSwitchProvider"
-          >
-            <v-icon left x-small color="#00E5FF">mdi-skip-next</v-icon>
-            Next Server
-          </v-btn>
-
-          <!-- Direct Pop-out Stream Button -->
-          <v-btn
-            v-if="activeIframeUrl"
-            small
-            outlined
-            color="#00E5FF"
-            :href="activeIframeUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-none font-weight-bold mr-2"
-            title="Open stream in a new unconstrained tab"
-          >
-            <v-icon left x-small>mdi-open-in-new</v-icon>
-            Open Stream ↗
-          </v-btn>
+          <span class="caption cyan--text mr-2">Cinema Player</span>
+          <v-btn small text color="cyan" @click="preparePlayback">Reload video</v-btn>
 
           <!-- Quick Episode Drawer toggle (TV Series only) -->
           <v-btn
@@ -145,6 +102,9 @@
             class="theater-video-player"
             :poster="backdropPath"
             @loadedmetadata="handleLoadedMetadata"
+            @durationchange="handleLoadedMetadata"
+            @canplay="handleLoadedMetadata"
+            @seeked="saveCurrentProgress"
             @play="handlePlay"
             @pause="saveCurrentProgress"
             @timeupdate="handleTimeUpdate"
@@ -361,39 +321,7 @@ export default {
       streamError: "",
       sourceRequest: null,
       hlsPlayer: null,
-      providers: [
-        { name: "Cinema Player", id: "native", movieUrl: () => "", tvUrl: () => "" },
-        {
-          name: "VidLink",
-          id: "vidlink",
-          movieUrl: (id) => `https://vidlink.pro/movie/${id}?primaryColor=FF4081&secondaryColor=00E5FF&autoplay=true`,
-          tvUrl: (id, season, episode) => `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=FF4081&secondaryColor=00E5FF&autoplay=true`,
-        },
-        {
-          name: "VidSrc",
-          id: "vidsrc_pm",
-          movieUrl: (id) => `https://vidsrc.pm/embed/movie?tmdb=${id}&autoPlay=1`,
-          tvUrl: (id, season, episode) => `https://vidsrc.pm/embed/tv?tmdb=${id}&season=${season}&episode=${episode}&autoPlay=1`,
-        },
-        {
-          name: "MultiEmbed",
-          id: "multiembed",
-          movieUrl: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1&autoplay=1`,
-          tvUrl: (id, season, episode) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}&autoplay=1`,
-        },
-        {
-          name: "AutoEmbed",
-          id: "autoembed",
-          movieUrl: (id) => `https://autoembed.co/movie/tmdb/${id}?autoplay=true`,
-          tvUrl: (id, season, episode) => `https://autoembed.co/tv/tmdb/${id}-${season}-${episode}?autoplay=true`,
-        },
-        {
-          name: "2Embed",
-          id: "twoembed",
-          movieUrl: (id) => `https://www.2embed.skin/embed/${id}`,
-          tvUrl: (id, season, episode) => `https://www.2embed.skin/embedtv/${id}&s=${season}&e=${episode}`,
-        },
-      ],
+      providers: [{ name: "Cinema Player", id: "native", movieUrl: () => "", tvUrl: () => "" }],
 
       // Source Switch Toast Notification
       showSwitchToast: false,
@@ -526,12 +454,17 @@ export default {
     '$route.params.id'() { this.loadPlayDetails(); },
   },
   async mounted() {
+    window.addEventListener("pagehide", this.saveCurrentProgress);
+    document.addEventListener("visibilitychange", this.saveWhenHidden);
     await this.loadPlayDetails();
     this.resetControlsTimer();
     window.addEventListener("keydown", this.handleKeyDown);
   },
   beforeDestroy() {
     this.saveCurrentProgress();
+    this.hasRestoredPosition = false;
+    window.removeEventListener("pagehide", this.saveCurrentProgress);
+    document.removeEventListener("visibilitychange", this.saveWhenHidden);
     this.disposePlayback();
     this.clearBufferingCheck();
     this.clearCountdown();
@@ -541,6 +474,9 @@ export default {
     window.removeEventListener("keydown", this.handleKeyDown);
   },
   methods: {
+    saveWhenHidden() {
+      if (document.visibilityState === 'hidden') this.saveCurrentProgress();
+    },
     disposePlayback() {
       if (this.sourceRequest) { this.sourceRequest.abort(); this.sourceRequest = null; }
       if (this.hlsPlayer) { this.hlsPlayer.destroy(); this.hlsPlayer = null; }
@@ -566,7 +502,7 @@ export default {
           if (controller.signal.aborted) return;
           this.resolvedSource = source;
         } catch (error) {
-          if (!controller.signal.aborted) this.streamError = 'Could not load this stream. Please retry or choose another server.';
+          if (!controller.signal.aborted) this.streamError = 'Could not load this stream. Please retry.';
           return;
         } finally {
           if (!controller.signal.aborted) this.sourceLoading = false;
@@ -701,13 +637,15 @@ export default {
       const saved = this.continueWatchingEntry;
       const sameEpisode = this.mediaType !== 'tv' || (Number(saved?.season) === this.selectedSeason && Number(saved?.episode) === this.selectedEpisode);
       const savedTime = sameEpisode && saved ? saved.currentTime : 0;
-      if (savedTime > 0 && Number.isFinite(player.duration)) {
+      if (!Number.isFinite(player.duration) || player.duration <= 0) return;
+      if (savedTime > 0) {
         player.currentTime = Math.min(savedTime, Math.max(player.duration - 5, 0));
       }
       this.hasRestoredPosition = true;
     },
     handlePlay() {
       const player = this.$refs.player;
+      if (!this.hasRestoredPosition) return;
       this.recordContinueWatching({
         currentTime: player ? player.currentTime : 0,
         duration: player ? player.duration : 0,
@@ -717,7 +655,7 @@ export default {
     },
     handleTimeUpdate() {
       const player = this.$refs.player;
-      if (!player) return;
+      if (!player || !this.hasRestoredPosition) return;
 
       // Autoplay next episode triggers when 15 seconds or less are remaining
       const timeLeft = player.duration - player.currentTime;

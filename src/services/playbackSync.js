@@ -1,5 +1,6 @@
 export function mediaKey(media, provider = "") {
   if (!media) return "";
+  if (media.resumeKey) return media.resumeKey;
   return [media.mediaType, media.mediaId, media.season || 1, media.episode || 1,
     media.sourceUrl || provider, media.timestamp || 0].join(":");
 }

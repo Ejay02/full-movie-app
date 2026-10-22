@@ -13,11 +13,11 @@
               <span class="grey--text text-caption mr-2 font-weight-bold">I am:</span>
               <v-btn-toggle v-model="currentUser" mandatory dense class="user-toggle">
                 <v-btn value="Timi" small class="text-none font-weight-bold timi-toggle-btn">
-                  <v-icon x-small left color="#E040FB">{{ timiIcon }}</v-icon>
+                  <v-avatar size="24" class="mr-2"><v-img :src="$store.getters.avatarForUser('Timi').src" alt="" /></v-avatar>
                   Timi
                 </v-btn>
                 <v-btn value="Ejay" small class="text-none font-weight-bold ejay-toggle-btn">
-                  <v-icon x-small left color="#00E5FF">{{ ejayIcon }}</v-icon>
+                  <v-avatar size="24" class="mr-2"><v-img :src="$store.getters.avatarForUser('Ejay').src" alt="" /></v-avatar>
                   Ejay
                 </v-btn>
               </v-btn-toggle>
@@ -25,7 +25,7 @@
                 icon
                 x-small
                 class="ml-1"
-                title="Change Profile Icons"
+                title="Change Avatar"
                 @click="openIconSelector"
               >
                 <v-icon x-small color="#FFD700">mdi-palette-swatch-outline</v-icon>
@@ -166,11 +166,11 @@
           <span class="grey--text text-caption mr-2 font-weight-bold">I am:</span>
           <v-btn-toggle v-model="currentUser" mandatory dense class="user-toggle">
             <v-btn value="Timi" small class="text-none font-weight-bold timi-toggle-btn">
-              <v-icon x-small left color="#E040FB">{{ timiIcon }}</v-icon>
+              <v-avatar size="24" class="mr-2"><v-img :src="$store.getters.avatarForUser('Timi').src" alt="" /></v-avatar>
               Timi
             </v-btn>
             <v-btn value="Ejay" small class="text-none font-weight-bold ejay-toggle-btn">
-              <v-icon x-small left color="#00E5FF">{{ ejayIcon }}</v-icon>
+              <v-avatar size="24" class="mr-2"><v-img :src="$store.getters.avatarForUser('Ejay').src" alt="" /></v-avatar>
               Ejay
             </v-btn>
           </v-btn-toggle>
@@ -197,80 +197,13 @@
 
               <!-- Stream Server Switcher -->
               <div class="d-flex align-center flex-wrap gap-1">
-                <!-- Ad Shield Chip -->
-                <v-chip
-                  x-small
-                  color="rgba(0, 230, 118, 0.2)"
-                  class="font-weight-bold mr-1 green--text text--accent-3"
-                  title="Browser sandbox blocks popup windows and top-level redirects. In-player adverts are controlled by the provider."
-                >
-                  <v-icon left x-small color="#00E676">
-                    mdi-shield-check
-                  </v-icon>
-                  Popups blocked
-                </v-chip>
-
-                <span class="grey--text text-caption mr-1 hidden-xs-only">Server:</span>
-                <v-btn-toggle v-model="activeProviderId" mandatory dense class="server-toggle" @change="changeServer">
-                  <v-btn
-                    v-for="prov in providers"
-                    :key="prov.id"
-                    :value="prov.id"
-                    x-small
-                    text
-                    class="text-none font-weight-bold"
-                  >
-                    {{ prov.name }}
-                  </v-btn>
-                </v-btn-toggle>
-                <v-btn
-                  x-small
-                  depressed
-                  color="rgba(0, 229, 255, 0.15)"
-                  class="cyan--text text--accent-2 text-none font-weight-bold ml-1"
-                  title="Auto-switch to next server"
-                  @click="autoSwitchProvider"
-                >
-                  <v-icon x-small left color="#00E5FF">mdi-skip-next</v-icon>
-                  Next Server
-                </v-btn>
-                <v-btn
-                  v-if="playerUrl"
-                  x-small
-                  outlined
-                  color="#00E5FF"
-                  :href="playerUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-none font-weight-bold ml-1"
-                  title="Open stream in a new unconstrained tab"
-                >
-                  <v-icon x-small left>mdi-open-in-new</v-icon>
-                  Open Stream ↗
-                </v-btn>
+                <span class="caption cyan--text mr-2">Together Player</span>
+                <v-btn small text color="cyan" @click="$refs.togetherPlayer.loadSource()">Reload video</v-btn>
                 <v-btn icon small dark class="ml-1" title="Close Player" @click="closePlayer">
                   <v-icon small>mdi-close</v-icon>
                 </v-btn>
               </div>
             </div>
-
-            <!-- Server auto-switch / buffering notification banner -->
-            <transition name="fade">
-              <div v-if="serverBufferingNotice" class="server-buffering-banner pa-2 px-3 d-flex align-center justify-space-between">
-                <div class="d-flex align-center">
-                  <v-progress-circular indeterminate size="16" width="2" color="#00E5FF" class="mr-2"></v-progress-circular>
-                  <span class="caption white--text">{{ serverBufferingNotice }}</span>
-                </div>
-                <div>
-                  <v-btn x-small text color="#00E5FF" class="text-none font-weight-bold mr-1" @click="autoSwitchProvider">
-                    Switch Now
-                  </v-btn>
-                  <v-btn x-small text color="grey" class="text-none" @click="dismissBufferingNotice">
-                    Keep Server
-                  </v-btn>
-                </div>
-              </div>
-            </transition>
 
             <watch-together-player ref="togetherPlayer"
               :key="playbackKey" :media="activeMedia" :provider="activeProviderId"
@@ -1035,6 +968,13 @@ import WordDuelGame from "@/components/games/WordDuelGame.vue";
 import CrosswordGame from "@/components/games/CrosswordGame.vue";
 import ScrabbleGame from "@/components/games/ScrabbleGame.vue";
 
+function savedGameMode(room) {
+  try {
+    const mode = localStorage.getItem(`last-game:${room}`);
+    return ['whot', 'crossword', 'wordDuel', 'scrabble'].includes(mode) ? mode : 'whot';
+  } catch (_) { return 'whot'; }
+}
+
 export default {
   name: "OurView",
   components: {
@@ -1059,7 +999,7 @@ export default {
       firebaseUnsubscribers: [],
 
       // Game Night State
-      activeGameMode: "whot",
+      activeGameMode: savedGameMode(this.$route.query.room || 'date-night'),
       gameScores: { timi: 0, ejay: 0 },
 
       // Active player state
@@ -1069,44 +1009,7 @@ export default {
       directVideoUrl: "",
       directVideoError: "",
       activeProviderId: "native",
-      providers: [
-        {
-          name: "Together Player",
-          id: "native",
-          movieUrl: () => "",
-          tvUrl: () => "",
-        },
-        {
-          name: "VidLink",
-          id: "vidlink",
-          movieUrl: (id) => `https://vidlink.pro/movie/${id}?primaryColor=FF4081&secondaryColor=00E5FF&autoplay=true`,
-          tvUrl: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=FF4081&secondaryColor=00E5FF&autoplay=true`,
-        },
-        {
-          name: "VidSrc",
-          id: "vidsrc_pm",
-          movieUrl: (id) => `https://vidsrc.pm/embed/movie?tmdb=${id}&autoPlay=1`,
-          tvUrl: (id, s, e) => `https://vidsrc.pm/embed/tv?tmdb=${id}&season=${s}&episode=${e}&autoPlay=1`,
-        },
-        {
-          name: "MultiEmbed",
-          id: "multiembed",
-          movieUrl: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1&autoplay=1`,
-          tvUrl: (id, s, e) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}&autoplay=1`,
-        },
-        {
-          name: "AutoEmbed",
-          id: "autoembed",
-          movieUrl: (id) => `https://autoembed.co/movie/tmdb/${id}?autoplay=true`,
-          tvUrl: (id, s, e) => `https://autoembed.co/tv/tmdb/${id}-${s}-${e}?autoplay=true`,
-        },
-        {
-          name: "2Embed",
-          id: "twoembed",
-          movieUrl: (id) => `https://www.2embed.skin/embed/${id}`,
-          tvUrl: (id, s, e) => `https://www.2embed.skin/embedtv/${id}&s=${s}&e=${e}`,
-        },
-      ],
+      providers: [{ name: "Together Player", id: "native", movieUrl: () => "", tvUrl: () => "" }],
 
       // Live Chat
       messages: [],
@@ -1218,7 +1121,9 @@ export default {
     },
   },
   watch: {
+    activeGameMode(mode) { try { localStorage.setItem(`last-game:${this.roomId}`, mode); } catch (_) { /* Optional navigation preference. */ } },
     roomId() {
+      this.activeGameMode = savedGameMode(this.roomId);
       this.firebaseUnsubscribers.forEach((stop) => stop());
       this.firebaseUnsubscribers = [];
       if (this.broadcastChannel) this.broadcastChannel.close();
@@ -1444,10 +1349,7 @@ export default {
         this.showToast(`${data.sender || 'Partner'} rolled the dice: ${data.payload.movie.title || data.payload.movie.name}! 🎲`);
         this.generateAiPitch(this.pickedMovie);
       } else if (data.type === "DICE_ACCEPTED") {
-        this.activeMedia = data.payload;
-        if (data.payload && data.payload.providerId && this.activeProviderId !== data.payload.providerId) {
-          this.activeProviderId = data.payload.providerId;
-        }
+        this.receiveActiveMedia(data.payload);
         this.activeTab = 0;
           try {
           localStorage.setItem(`our-view-active-media-${this.roomId}`, JSON.stringify(data.payload));
@@ -1766,8 +1668,8 @@ export default {
       if (this.$refs.togetherPlayer) this.$refs.togetherPlayer.syncNow();
     },
     receiveActiveMedia(media) {
-      if (media && !media.sourceUrl && (!media.playerVersion || !this.providers.some(item => item.id === media.providerId))) {
-        media = { ...media, providerId: 'native', playerVersion: 2 };
+      if (media && !media.sourceUrl && media.providerId !== 'native') {
+        media = { ...media, resumeKey: mediaKey(media, media.providerId || this.activeProviderId), providerId: 'native', playerVersion: 3, useEmbed: false };
       }
       const changed = mediaKey(this.activeMedia, this.activeProviderId) !== mediaKey(media, media?.providerId || this.activeProviderId);
       this.activeMedia = media;
@@ -1784,7 +1686,7 @@ export default {
       try {
         const url = new URL(this.directVideoUrl.trim());
         if (url.protocol !== "https:" || url.username || url.password) throw new Error();
-        this.activeMedia = { ...this.activeMedia, sourceUrl: url.href, useEmbed: false, timestamp: Date.now() };
+        this.activeMedia = { ...this.activeMedia, resumeKey: null, sourceUrl: url.href, useEmbed: false, timestamp: Date.now() };
         firebaseSync.setActiveMedia(this.activeMedia, this.roomId);
         this.receiveActiveMedia(this.activeMedia);
         this.showVideoSourceDialog = false;
