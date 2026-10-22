@@ -8,6 +8,7 @@
     <div class="video-stage">
       <div v-if="loadingSource" class="source-loading" role="status">Finding your stream…</div>
       <video v-if="nativeSource" ref="video" controls playsinline preload="metadata"
+        @pointerdown="markLocalControl" @keydown="markLocalControl"
         @loadedmetadata="onVideoReady" @durationchange="onVideoReady" @canplay="onVideoReady" @play="publish('play')"
         @pause="publish('pause')" @seeked="publish('seeked')" @timeupdate="heartbeat" @ended="publish('ended')"
         @error="error = 'The video could not load. Retry the stream.'">
@@ -17,7 +18,7 @@
       <iframe v-else-if="provider !== 'native'" ref="embed" :src="embedUrl" title="Movie player" allowfullscreen
         sandbox="allow-scripts allow-same-origin allow-presentation"
         allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerpolicy="origin" />
-      <v-btn v-if="needsGesture && nativeSource" class="join-playback" color="cyan" dark @click="restorePlayback">Tap to join playback</v-btn>
+      <v-btn v-if="needsGesture && shared && shared.playing && nativeSource" class="join-playback" color="cyan" dark @click="restorePlayback">Tap to join playback</v-btn>
     </div>
     <div class="pa-3 d-flex flex-wrap align-center gap-2">
       <v-btn v-if="nativeSource" small color="cyan" class="black--text text-none" :disabled="!connected" @click="togglePlayback">{{ shared && shared.playing ? 'Pause together' : 'Play together' }}</v-btn>
@@ -38,7 +39,7 @@ export default {
   props: { media: Object, provider: String, url: String, roomId: String, currentUser: String },
   data: () => ({ connected: false, offset: 0, shared: null, error: "", needsGesture: false,
     resolvedSource: null, loadingSource: false, sourceReady: false, playbackLoaded: false, sourceRequest: null, sourceGeneration: 0, hls: null, closing: false,
-    clientId: `${Date.now()}-${Math.random().toString(36).slice(2)}`, applyingUntil: 0,
+    clientId: `${Date.now()}-${Math.random().toString(36).slice(2)}`, applyingUntil: 0, localControlUntil: 0,
     lastSent: 0, stops: [], embedStart: null, embedPlaying: false, tick: Date.now(), timer: null }),
   computed: {
     nativeSource() {
@@ -61,7 +62,7 @@ export default {
       if (this.loadingSource) return 'Loading the shared player';
       if (this.provider === 'native' && !this.nativeSource) return 'Stream unavailable';
       if (!this.nativeSource) return "Shared title · provider playback is independent";
-      if (this.needsGesture) return "Tap to allow playback on this device";
+      if (this.needsGesture && this.shared?.playing) return "Tap to allow playback on this device";
       if (!this.shared) return "Press play when you are ready";
       return this.shared.playing ? "Shared playback is playing" : "Shared playback is paused";
     },
@@ -88,6 +89,7 @@ export default {
     window.removeEventListener("message", this.onPlayerMessage);
   },
   methods: {
+    markLocalControl() { this.localControlUntil = Date.now() + 3000; },
     async loadSource() {
       this.sourceReady = false;
       const generation = ++this.sourceGeneration;
@@ -159,14 +161,16 @@ export default {
       const position = playbackPosition(this.shared, Date.now() + this.offset, video.duration);
       if (Math.abs(video.currentTime - position) > 1) video.currentTime = position;
       if (this.shared.playing) {
-        try { await video.play(); this.needsGesture = false; }
-        catch (_) { this.needsGesture = true; }
+        const command = this.shared;
+        try { await video.play(); if (this.shared === command) this.needsGesture = false; }
+        catch (_) { if (this.shared === command && command.playing) this.needsGesture = true; }
       } else { video.pause(); this.needsGesture = false; }
     },
     async send(position, playing) {
       if (!this.connected) { this.error = "Room offline. Reconnect before sharing playback controls."; return; }
       const state = { mediaKey: this.key, position, playing, sender: this.currentUser,
-        clientId: this.clientId, updatedAt: Date.now() + this.offset };
+        clientId: this.clientId, updatedAt: Date.now() + this.offset,
+        watchRequestId: playing && !this.shared?.playing ? `${this.clientId}:${Date.now()}` : (this.shared?.watchRequestId || '') };
       this.shared = state;
       this.lastSent = Date.now();
       try { await firebaseSync.setPlayback(state, this.roomId); this.error = ""; }
@@ -177,6 +181,8 @@ export default {
       if (!video || !video.readyState || this.closing || this.loadingSource || !this.sourceReady || !this.playbackLoaded) return;
       // Ignore the echo of a remote command, but keep an immediate user override.
       const playing = !video.paused && !video.ended;
+      // Loading, autoplay rejection and browser suspension are not room commands.
+      if (this.shared && playing !== this.shared.playing && !video.ended && Date.now() > this.localControlUntil) return;
       if (Date.now() < this.applyingUntil && this.shared && playing === this.shared.playing &&
           Math.abs(video.currentTime - playbackPosition(this.shared, Date.now() + this.offset, video.duration)) < 1.5) return;
       this.send(video.currentTime, playing);

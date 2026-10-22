@@ -150,11 +150,11 @@
       <!-- User Avatar with Profile Switcher Menu -->
       <v-menu offset-y transition="slide-y-transition" rounded="lg" min-width="180">
         <template #activator="{ on, attrs }">
-          <v-btn icon class="ml-2" :aria-label="`${currentUser} profile menu`" v-bind="attrs" v-on="on">
+          <v-btn icon class="ml-2" :title="`${currentUser} · ${$store.getters.isUserOnline(currentUser) ? 'Online' : 'Offline'}`" :aria-label="`${currentUser} profile menu`" v-bind="attrs" v-on="on">
           <v-badge
             bordered
             bottom
-            :color="currentUser === 'Timi' ? '#FF4081' : '#00E5FF'"
+            :color="$store.getters.isUserOnline(currentUser) ? (currentUser === 'Timi' ? '#FF4081' : '#00E5FF') : '#808895'"
             dot
             offset-x="10"
             offset-y="10"
@@ -174,10 +174,15 @@
                   {{ currentUser === 'Timi' ? timiIcon : ejayIcon }}
                 </v-icon>
               </v-list-item-title>
-              <v-list-item-subtitle class="caption grey--text">Active Profile</v-list-item-subtitle>
+              <v-list-item-subtitle class="caption grey--text">{{ $store.getters.isUserOnline(currentUser) ? 'Online' : 'Offline' }}</v-list-item-subtitle>
             </v-list-item-content>
           </v-list-item>
           <v-divider class="my-1"></v-divider>
+          <v-list-item v-for="person in ['Timi', 'Ejay']" :key="person">
+            <v-list-item-avatar size="28"><v-img :src="$store.getters.avatarForUser(person).src" /></v-list-item-avatar>
+            <v-list-item-title>{{ person }} · {{ $store.getters.isUserOnline(person) ? 'Online' : 'Offline' }}</v-list-item-title>
+            <v-icon x-small :color="$store.getters.isUserOnline(person) ? '#00e676' : '#808895'">mdi-circle</v-icon>
+          </v-list-item>
           <v-list-item @click="switchUser(currentUser === 'Timi' ? 'Ejay' : 'Timi')">
             <v-list-item-icon class="mr-3">
               <v-icon small color="#00E5FF">mdi-account-switch</v-icon>

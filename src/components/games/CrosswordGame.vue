@@ -4,7 +4,7 @@
       <div><span class="crossword-eyebrow">PICTURE & WORD DUEL</span><h3>Crossword Go</h3></div>
       <span v-if="puzzle" class="puzzle-name">{{ puzzle.title }}</span>
     </header>
-    <p class="crossword-intro">Read the pictures and word clues in the board. Place your letters, then Go. Each letter earns 1 point; finishing a word earns 5 more.</p>
+    <p class="crossword-intro">Place your letters, then Go. Correct: +1. Completed word: +5. Wrong: −1 and the tile returns to your rack for another try.</p>
     <v-alert v-if="gameError" dense outlined type="warning">{{ gameError }}</v-alert>
     <p v-if="gameLoading" role="status">Restoring your board…</p>
     <template v-if="puzzle && crosswordState">
@@ -13,7 +13,10 @@
           <span>{{ person }}{{ person === currentUser ? ' · you' : '' }}</span><strong>{{ crosswordState.scores[person] }}</strong>
         </div>
       </div>
-      <div class="picture-board" aria-label="Picture crossword board">
+      <v-btn v-if="puzzle.cols === 8" small outlined color="cyan" class="mb-3" @click="startLargerPuzzle">Start a larger crossword</v-btn>
+      <p class="board-scroll-hint">Swipe the board sideways on a small screen. Tap a clue to read it below.</p>
+      <div class="picture-board-scroll" tabindex="0" aria-label="Scrollable crossword board">
+      <div class="picture-board" :style="{ gridTemplateColumns: `repeat(${puzzle.cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${puzzle.rows}, minmax(0, 1fr))`, aspectRatio: `${puzzle.cols} / ${puzzle.rows}` }" aria-label="Picture crossword board">
         <template v-for="cell in puzzle.cells">
           <button v-if="cell.kind === 'clue'" :key="cell.key" class="picture-clue" :class="{ chosen: selectedWordId === cell.wordId }" :aria-label="`${cell.image ? 'Picture clue' : cell.label}, ${cell.direction}`" @click="selectClue(cell.wordId)">
             <img v-if="cell.image" :src="`/crossword-clues/${cell.image}.svg`" alt="Picture clue" />
@@ -24,8 +27,9 @@
             :class="squareClasses(cell)" :disabled="gameLoading || gameSaving"
             :aria-label="`Row ${cell.row + 1}, column ${cell.col + 1}: ${letterAt(cell.key) || 'empty'}`"
             @click="tapCell(cell)">{{ letterAt(cell.key) }}</button>
-          <div v-else :key="cell.key" class="board-corner" aria-hidden="true">✦</div>
+          <div v-else :key="cell.key" class="board-corner" aria-hidden="true"></div>
         </template>
+      </div>
       </div>
       <div class="selected-clue" v-if="selectedWord">
         <img v-if="selectedWord.image" :src="`/crossword-clues/${selectedWord.image}.svg`" alt="Selected picture clue" />
@@ -46,7 +50,7 @@
         <div class="crossword-actions">
           <v-btn small text :disabled="!pending.length || gameSaving" @click="clearDraft">Clear tiles</v-btn>
           <v-btn small text :disabled="!canPlay" @click="passTurn">Pass</v-btn>
-          <v-btn color="cyan" class="black--text font-weight-bold" :disabled="!canPlay || !pending.length" @click="submitTurn">Go · {{ pending.length }} tiles</v-btn>
+          <v-btn color="cyan" class="black--text font-weight-bold" :disabled="!canPlay || !pending.length" @click="submitTurn">Go · {{ pending.length }} {{ pending.length === 1 ? 'tile' : 'tiles' }}</v-btn>
         </div>
         <p v-if="feedback" class="crossword-feedback" role="status">{{ feedback }}</p>
       </div>
@@ -122,14 +126,18 @@ export default {
     nextPuzzle() {
       if (!this.finished) return;
       const index = PICTURE_CROSSWORDS.findIndex(puzzle => puzzle.id === this.crosswordState.puzzleId);
-      this.saveGameSession(newPictureCrossword(index + 1, this.currentUser));
+      this.saveGameSession(newPictureCrossword((index + 1) % 2, this.currentUser));
     },
+    startLargerPuzzle() { if (!this.gameSaving && !this.gameLoading) this.saveGameSession(newPictureCrossword(0, this.currentUser)); },
   },
 };
 </script>
 
 <style scoped>
-.picture-crossword { max-width: 660px; margin: auto; padding: 20px 12px 0; }
+.picture-crossword { max-width: 880px; min-width: 0; margin: auto; padding: 20px 12px 0; }
+.picture-board-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: 8px; }
+.picture-board-scroll .picture-board { min-width: 650px; }
+.board-scroll-hint { color: #aebbd0; font-size: 11px; }
 .crossword-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .crossword-heading h3 { font-size: 26px; font-weight: 800; letter-spacing: -1px; }
 .crossword-eyebrow { color: #61e1dd; font-size: 10px; letter-spacing: 2px; font-weight: 800; }
@@ -141,9 +149,10 @@ export default {
 .crossword-score.timi { color: #ffacda; }.crossword-score.ejay { color: #72e5ef; }
 .crossword-score.active { border-color: currentColor; }
 .picture-board { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; padding: 3px; border: 2px solid #9cb6d1; background: #60758c; border-radius: 9px; overflow: hidden; }
-.picture-clue, .picture-square, .board-corner { aspect-ratio: 1; min-width: 0; }
+.picture-clue, .picture-square, .board-corner { min-width: 0; min-height: 0; width: 100%; height: 100%; overflow: hidden; }
 .picture-clue { background: #fff1d4; color: #334058; position: relative; display: flex; justify-content: center; align-items: center; padding: 4px 6px 10px 3px; font-size: clamp(8px, 1.7vw, 12px); font-weight: 700; line-height: 1.05; overflow-wrap: anywhere; }
 .picture-clue img { width: 85%; height: 85%; object-fit: contain; }
+.picture-board .picture-clue { font-size: 9px; padding: 2px 3px 10px; }
 .picture-clue.chosen { background: #ffe29a; box-shadow: inset 0 0 0 2px #d5981e; }
 .clue-arrow { position: absolute; bottom: 0; right: 3px; font-size: 13px; color: #42647d; }
 .picture-square { background: #f5f8fc; color: #23354b; font-weight: 800; font-size: clamp(20px, 4vw, 32px); border: 2px solid transparent; }

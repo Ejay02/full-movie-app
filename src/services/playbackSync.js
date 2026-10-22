@@ -1,3 +1,7 @@
+export function isNewWatchRequest(previous, next, key) {
+  return !!(previous && next?.playing && next.mediaKey === key && next.watchRequestId && next.watchRequestId !== previous.watchRequestId);
+}
+
 export function mediaKey(media, provider = "") {
   if (!media) return "";
   if (media.resumeKey) return media.resumeKey;

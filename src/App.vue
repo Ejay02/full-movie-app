@@ -38,16 +38,34 @@ export default {
     CinemaAtmosphere,
   },
 
-  data: () => ({ stopAvatarSync: null }),
+  data: () => ({ stopAvatarSync: null, stopPresence: null, stopPresenceSync: null, stopConnection: null }),
   mounted() {
     this.stopAvatarSync = firebaseSync.subscribeToProfileAvatars(this.receiveAvatars);
     window.addEventListener('storage', this.receiveAvatarStorage);
+    this.stopPresenceSync = firebaseSync.subscribeToPresence(value => this.$store.commit('SET_PRESENCE', value));
+    this.stopConnection = firebaseSync.subscribeToConnection(value => this.$store.commit('SET_PRESENCE_CONNECTED', value));
+    this.startPresence();
+    window.addEventListener('user-identity-changed', this.startPresence);
+    window.addEventListener('pagehide', this.endPresence);
+    window.addEventListener('pageshow', this.startPresence);
   },
   beforeDestroy() {
     if (this.stopAvatarSync) this.stopAvatarSync();
     window.removeEventListener('storage', this.receiveAvatarStorage);
+    this.endPresence();
+    if (this.stopPresenceSync) this.stopPresenceSync();
+    if (this.stopConnection) this.stopConnection();
+    window.removeEventListener('user-identity-changed', this.startPresence);
+    window.removeEventListener('pagehide', this.endPresence);
+    window.removeEventListener('pageshow', this.startPresence);
   },
   methods: {
+    endPresence() { if (this.stopPresence) this.stopPresence(); this.stopPresence = null; },
+    startPresence(event) {
+      this.endPresence();
+      const user = typeof event?.detail === 'string' ? event.detail : localStorage.getItem('our_view_user');
+      this.stopPresence = firebaseSync.trackPresence(user);
+    },
     receiveAvatars(profiles) {
       Object.entries(profiles).forEach(([user, avatar]) => this.$store.commit('SET_PROFILE_AVATAR', { user, avatar }));
     },

@@ -1,4 +1,5 @@
 // Original arrow crosswords: clues live immediately above or left of their answers.
+import { LARGE_PICTURE_CROSSWORDS } from '@/services/largePictureCrosswords';
 const text = (label) => ({ label });
 const picture = (image, label) => ({ image, label });
 const blocks = [
@@ -39,19 +40,21 @@ function makePuzzle(id, title, indices) {
 }
 
 export const PICTURE_CROSSWORDS = [
+  ...LARGE_PICTURE_CROSSWORDS,
   makePuzzle('picture-night-1', 'Little things', [0, 1, 2, 3]),
   makePuzzle('picture-night-2', 'Around us', [4, 5, 6, 0]),
 ];
 
 export const picturePuzzle = (state) => PICTURE_CROSSWORDS.find(puzzle => puzzle.id === state?.puzzleId);
 
-function drawRack(puzzle, filled, random = Math.random) {
+function drawRack(puzzle, filled, random = Math.random, returned = []) {
   const letters = puzzle.cells.filter(cell => cell.kind === 'letter' && !filled[cell.key]).map(cell => cell.answer);
+  const kept = returned.filter(letter => { const index = letters.indexOf(letter); if (index < 0) return false; letters.splice(index, 1); return true; });
   for (let i = letters.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
     [letters[i], letters[j]] = [letters[j], letters[i]];
   }
-  return letters.slice(0, 5);
+  return [...kept, ...letters.slice(0, Math.max(0, 5 - kept.length))];
 }
 
 export function newPictureCrossword(index = 0, player = 'Timi', random = Math.random) {
@@ -68,22 +71,27 @@ export function playPictureTurn(state, player, placements, random = Math.random)
   for (const { cellKey, rackIndex } of placements) {
     const cell = puzzle.cells.find(item => item.key === cellKey);
     if (!Number.isInteger(rackIndex) || rackIndex < 0 || rackIndex >= state.rack.length || usedTiles.has(rackIndex) || usedCells.has(cellKey) || cell?.kind !== 'letter' || state.filled?.[cellKey]) return { error: 'These tiles have changed. Clear your rack placements and try again.' };
-    if (cell.answer !== state.rack[rackIndex]) return { error: 'A letter does not fit its clues. Adjust your tiles and try again.' };
     usedTiles.add(rackIndex); usedCells.add(cellKey);
   }
   const filled = { ...state.filled }, solved = { ...state.solved }, scores = { ...state.scores };
-  placements.forEach(({ cellKey, rackIndex }) => { filled[cellKey] = { letter: state.rack[rackIndex], player }; });
+  let wrong = 0;
+  const correctTiles = new Set();
+  placements.forEach(({ cellKey, rackIndex }) => {
+    if (puzzle.cells.find(cell => cell.key === cellKey).answer !== state.rack[rackIndex]) { wrong++; return; }
+    filled[cellKey] = { letter: state.rack[rackIndex], player }; correctTiles.add(rackIndex);
+  });
   let completed = 0;
   puzzle.words.forEach(word => {
     if (!solved[word.id] && word.cells.every(key => filled[key])) { solved[word.id] = player; completed++; }
   });
-  const points = placements.length + completed * 5;
+  const points = correctTiles.size + completed * 5 - wrong;
   scores[player] = (scores[player] || 0) + points;
   const done = puzzle.cells.every(cell => cell.kind !== 'letter' || filled[cell.key]);
-  return { state: { ...state, filled, solved, scores, rack: drawRack(puzzle, filled, random),
-    turn: (state.turn || 0) + 1, currentTurn: player === 'Timi' ? 'Ejay' : 'Timi', status: done ? 'game_over' : 'playing',
+  const returned = wrong ? state.rack.filter((_, index) => !correctTiles.has(index)) : [];
+  return { wrong, state: { ...state, filled, solved, scores, rack: drawRack(puzzle, filled, random, returned),
+    turn: (state.turn || 0) + 1, currentTurn: wrong ? player : player === 'Timi' ? 'Ejay' : 'Timi', status: done ? 'game_over' : 'playing',
     winner: done ? (scores.Timi === scores.Ejay ? null : scores.Timi > scores.Ejay ? 'Timi' : 'Ejay') : null,
-    lastMove: `${player} +${points} · ${placements.length} letters${completed ? ` · ${completed} words completed` : ''}` } };
+    lastMove: `${player} ${points >= 0 ? '+' : ''}${points} · ${correctTiles.size} correct${wrong ? ` · ${wrong} wrong (−${wrong}), tiles returned — try again` : ''}${completed ? ` · ${completed} words completed` : ''}` } };
 }
 
 export function passPictureTurn(state, player, random = Math.random) {

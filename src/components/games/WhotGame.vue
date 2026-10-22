@@ -425,17 +425,6 @@ export default {
 .hand-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; background: #111725; }
 .hand-controls.turn-panel-active { background: #102a25; }
 .hand-turn-copy { min-width: 0; }
-@media (max-width: 960px) {
-  .whot-game-container { padding-bottom: 140px !important; }
-  .hand-controls { position: fixed; left: 12px; right: 12px; bottom: 0; z-index: 12; margin-bottom: 0 !important; padding-bottom: calc(12px + env(safe-area-inset-bottom)) !important; box-shadow: 0 -8px 28px #0009; }
-  .hand-controls .v-btn { flex-shrink: 0; }
-  .opponent-cards-fan .whot-card-back { height: 60px; width: 44px; }
-}
-@media (max-width: 420px) {
-  .hand-controls { flex-wrap: wrap; gap: 6px; }
-  .hand-controls .v-btn { width: 100%; }
-  .whot-card { width: 64px; height: 96px; }
-}
 .whot-card-playable { outline: 2px solid #00e676; outline-offset: 2px; box-shadow: 0 0 14px #00e67640; }
 button.market-pile-container { border: 0; color: inherit; padding: 8px; border-radius: 12px; }
 button:focus-visible { outline: 3px solid #00e5ff; outline-offset: 4px; }
@@ -594,5 +583,32 @@ button:disabled { cursor: default; }
   background: #120e24 !important;
   border-radius: 20px !important;
   border: 1px solid rgba(224, 64, 251, 0.4) !important;
+}
+/* Keep the hand and its controls in one flow, including split-screen windows. */
+.whot-game-container { container-type: inline-size; }
+.hand-controls { position: sticky; top: 72px; z-index: 3; }
+.player-cards-row { gap: 10px; padding: 8px 2px 16px; }
+.whot-card { flex-shrink: 0; }
+.card-back-pattern { max-width: 100%; overflow: hidden; padding: 3px; letter-spacing: 1px; }
+@container (max-width: 650px) {
+  .whot-header { gap: 8px; margin-bottom: 12px !important; }
+  .whot-header h3 { font-size: 17px !important; }
+  .whot-board { padding: 12px !important; }
+  .opponent-hand-section { margin-bottom: 8px !important; }
+  .opponent-cards-fan .whot-card-back { width: 34px; height: 46px; }
+  .card-back-pattern { font-size: 8px; }
+  .center-table-section { margin: 12px 0 !important; gap: 24px !important; }
+  .main-market-card, .whot-card-active { width: 72px; height: 100px; }
+  .action-ticker { margin-bottom: 8px !important; }
+  .hand-controls { padding: 10px !important; gap: 6px; flex-wrap: wrap; }
+  .hand-turn-copy { flex: 1 1 180px; }
+  .hand-controls .v-btn { flex-shrink: 0; }
+  .player-cards-row .whot-card { width: 62px; height: 94px; padding: 5px !important; }
+  .player-cards-row { gap: 8px; }
+  .shape-symbol-large { font-size: 1.5rem; }
+}
+@media (max-width: 600px) {
+  .whot-game-container { padding: 6px !important; }
+  .hand-controls { top: 64px; }
 }
 </style>

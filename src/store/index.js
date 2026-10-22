@@ -229,6 +229,8 @@ function normalizeWatchItem(item) {
 
 const store = new Vuex.Store({
   state: {
+    presence: {},
+    presenceConnected: false,
     profileAvatars: readAvatars(),
     continueWatching: loadContinueWatching(),
     myView: loadMyView(),
@@ -237,6 +239,7 @@ const store = new Vuex.Store({
     nextDateNight: loadNextDateNight(),
   },
   getters: {
+    isUserOnline: (state) => (user) => state.presenceConnected && Object.values(state.presence[user] || {}).some(value => value === true),
     avatarForUser: (state) => (user) => avatarById(state.profileAvatars[user]?.id) || avatarById('cinema-kid'),
     continueWatchingItems(state) {
       return state.continueWatching;
@@ -279,6 +282,8 @@ const store = new Vuex.Store({
       ),
   },
   mutations: {
+    SET_PRESENCE(state, presence) { state.presence = presence; },
+    SET_PRESENCE_CONNECTED(state, connected) { state.presenceConnected = connected; },
     SET_PROFILE_AVATAR(state, { user, avatar }) {
       state.profileAvatars = mergeAvatar(state.profileAvatars, user, avatar);
       try { localStorage.setItem(AVATAR_STORAGE_KEY, JSON.stringify(state.profileAvatars)); } catch (_) { /* Session choice still works when storage is unavailable. */ }

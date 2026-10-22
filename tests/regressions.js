@@ -18,7 +18,7 @@ function load(file, mocks = {}) {
     plugins: ['@babel/plugin-transform-modules-commonjs'] }).code;
   const module = { exports: {} };
   vm.runInNewContext(transformed, { module, exports: module.exports, console, Date, Math, URL,
-    localStorage, window: { addEventListener() {}, removeEventListener() {} },
+    localStorage, process: { env: {} }, window: { addEventListener() {}, removeEventListener() {} },
     require: (name) => {
       if (name in mocks) return mocks[name];
       if (name.startsWith('@/')) return load('src/' + name.slice(2) + '.js', mocks);
@@ -44,6 +44,40 @@ function whotState(number) {
   return state;
 }
 async function main() {
+  await test('Only a new play request switches a room out of Games', () => {
+    const old = { mediaKey: 'movie', playing: false, watchRequestId: 'old' };
+    const play = { ...old, playing: true, watchRequestId: 'new' };
+    assert.equal(sync.isNewWatchRequest(old, play, 'movie'), true);
+    assert.equal(sync.isNewWatchRequest(play, { ...play, position: 30 }, 'movie'), false, 'heartbeats must not pull someone out of Games');
+    assert.equal(sync.isNewWatchRequest(null, play, 'movie'), false, 'old snapshots must not replace the chosen tab');
+    assert.equal(sync.isNewWatchRequest(old, play, 'other-room-movie'), false);
+    assert.equal(sync.isNewWatchRequest(play, { ...play, playing: false }, 'movie'), false);
+  });
+  await test('Presence registers disconnect cleanup first and keeps browser sessions independent', async () => {
+    const listeners = [], writes = [], cleanup = [], removed = [];
+    let sequence = 0;
+    const service = load('src/services/firebaseSync.js', {
+      'firebase/app': { initializeApp: () => ({}), getApps: () => [] },
+      'firebase/database': {
+        getDatabase: () => ({}), ref: (_, key) => key, push: key => `${key}/${++sequence}`,
+        onValue: (_, callback) => { listeners.push(callback); return () => {}; },
+        onDisconnect: key => ({ remove: async () => { cleanup.push(key); } }),
+        set: async (key, value) => { assert.ok(cleanup.includes(key)); writes.push([key, value]); },
+        remove: async key => { removed.push(key); },
+      },
+    }).firebaseSync;
+    const stopFirst = service.trackPresence('Timi');
+    const stopSecond = service.trackPresence('Timi');
+    await listeners[0]({ val: () => true }); await listeners[1]({ val: () => true });
+    assert.equal(writes.length, 2); assert.notEqual(writes[0][0], writes[1][0]);
+    stopFirst(); assert.ok(removed.includes(writes[0][0])); assert.ok(!removed.includes(writes[1][0]));
+    await listeners[1]({ val: () => false }); await listeners[1]({ val: () => true });
+    assert.equal(writes.length, 3, 'reconnection gets its own disconnect cleanup');
+    stopSecond();
+    const stopPending = service.trackPresence('Ejay');
+    const pending = listeners[2]({ val: () => true }); stopPending(); await pending;
+    assert.equal(writes.length, 3, 'closing while registering cannot resurrect presence');
+  });
   await test('Avatar choices persist per person and stale cloud updates cannot replace them', () => {
     let profiles = avatars.mergeAvatar({}, 'Timi', { id: 'hearts', updatedAt: 20 });
     profiles = avatars.mergeAvatar(profiles, 'Ejay', { id: 'ninja', updatedAt: 30 });
@@ -57,6 +91,7 @@ async function main() {
   await test('Picture crosswords have picture and word clues, valid crossings, and playable racks', () => {
     for (let i = 0; i < pictures.PICTURE_CROSSWORDS.length; i++) {
       const puzzle = pictures.PICTURE_CROSSWORDS[i];
+      if (i < 2) { assert.ok(puzzle.words.length >= 12, `${puzzle.title}: ${puzzle.words.length} words`); assert.ok(puzzle.words.some(word => word.answer.length >= 8)); }
       assert.ok(puzzle.cells.some(cell => cell.image));
       assert.ok(puzzle.cells.some(cell => cell.kind === 'clue' && !cell.image));
       for (const word of puzzle.words) assert.equal(word.cells.map(key => puzzle.cells[Number(key)].answer).join(''), word.answer);
@@ -75,9 +110,10 @@ async function main() {
         assert.notEqual(state.currentTurn, player);
       }
       assert.equal(state.status, 'game_over');
-      assert.equal(Object.keys(state.filled).length, 36);
-      assert.equal(Object.keys(state.solved).length, 24);
-      assert.equal(state.scores.Timi + state.scores.Ejay, 36 + 24 * 5);
+      const letterCount = puzzle.cells.filter(cell => cell.kind === 'letter').length;
+      assert.equal(Object.keys(state.filled).length, letterCount);
+      assert.equal(Object.keys(state.solved).length, puzzle.words.length);
+      assert.equal(state.scores.Timi + state.scores.Ejay, letterCount + puzzle.words.length * 5);
       games.cacheGame('crosswordGo', 'picture-test', state);
       assert.equal(games.readGame('crosswordGo', 'picture-test').scores.Timi, state.scores.Timi);
     }
@@ -89,7 +125,12 @@ async function main() {
     assert.ok(pictures.playPictureTurn(state, 'Ejay', [move]).error);
     assert.ok(pictures.playPictureTurn(state, 'Timi', [move, move]).error);
     const wrong = pictures.picturePuzzle(state).cells.find(cell => cell.kind === 'letter' && cell.answer !== state.rack[0]);
-    assert.ok(pictures.playPictureTurn(state, 'Timi', [{ ...move, cellKey: wrong.key }]).error);
+    const penalty = pictures.playPictureTurn(state, 'Timi', [{ ...move, cellKey: wrong.key }]);
+    assert.equal(penalty.state.scores.Timi, -1);
+    assert.equal(penalty.state.currentTurn, 'Timi');
+    assert.deepEqual(clone(penalty.state.rack), clone(state.rack));
+    assert.equal(penalty.state.filled[wrong.key], undefined);
+    assert.equal(state.scores.Timi, 0, 'previous saved state is immutable');
     const passed = pictures.passPictureTurn(state, 'Timi');
     assert.equal(passed.currentTurn, 'Ejay'); assert.equal(passed.scores.Timi, 0);
     assert.equal(pictures.passPictureTurn(state, 'Ejay'), null);
@@ -242,15 +283,19 @@ async function main() {
       '@/services/playbackSync': sync,
     }).default;
     const video = { readyState: 1, currentTime: 0, duration: 100, pause() { this.paused = true; }, paused: false };
-    const component = { $refs: { video }, sourceReady: true, playbackLoaded: true, shared: { position: 35, playing: false, updatedAt: Date.now() }, offset: 0, applyingUntil: 0 };
+    const component = { $refs: { video }, sourceReady: true, playbackLoaded: true, shared: { position: 35, playing: false, updatedAt: Date.now() }, offset: 0, applyingUntil: 0, localControlUntil: 0 };
     await player.methods.restorePlayback.call(component);
     assert.equal(video.currentTime, 35); assert.equal(video.paused, true);
     player.methods.publish.call(component);
     assert.equal(writes, 0);
     component.send = () => { writes++; };
     video.paused = false;
+    player.methods.markLocalControl.call(component);
     player.methods.publish.call(component);
     assert.equal(writes, 1, 'an immediate user play after a remote pause must be shared');
+    component.shared.playing = true; component.localControlUntil = 0; component.applyingUntil = 0; video.paused = true;
+    player.methods.publish.call(component);
+    assert.equal(writes, 1, 'a joining browser pause must not pause the room');
   });
   await test('Pending game save cannot replace a new room match', async () => {
     let resolveSave;

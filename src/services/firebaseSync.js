@@ -8,6 +8,7 @@ import {
   update,
   remove,
   runTransaction,
+  onDisconnect,
 } from "firebase/database";
 
 const firebaseConfig = {
@@ -39,6 +40,28 @@ if (firebaseConfig.apiKey && firebaseConfig.databaseURL) {
 }
 
 export const firebaseSync = {
+  subscribeToPresence(callback) {
+    if (!this.isConfigured()) { callback({}); return () => {}; }
+    return onValue(ref(db, 'movie_app/presence'), snapshot => callback(snapshot.val() || {}), () => callback({}));
+  },
+  trackPresence(user) {
+    if (!this.isConfigured() || !['Timi', 'Ejay'].includes(user)) return () => {};
+    let stopped = false, generation = 0;
+    const connections = new Set();
+    const stop = this.subscribeToConnection(async connected => {
+      const attempt = ++generation;
+      if (!connected || stopped) return;
+      const connection = push(ref(db, `movie_app/presence/${user}`));
+      connections.add(connection);
+      try {
+        // Register server cleanup before declaring this browser online.
+        await onDisconnect(connection).remove();
+        if (!stopped && attempt === generation) await set(connection, true);
+        if (stopped || attempt !== generation) await remove(connection);
+      } catch (error) { console.warn('Presence unavailable:', error.message); }
+    });
+    return () => { stopped = true; stop(); connections.forEach(connection => { remove(connection).catch(() => {}); }); };
+  },
   subscribeToProfileAvatars(callback) {
     if (!this.isConfigured()) return () => {};
     return onValue(ref(db, 'movie_app/profileAvatars'), snapshot => callback(snapshot.val() || {}),

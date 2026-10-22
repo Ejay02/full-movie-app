@@ -35,6 +35,12 @@
           <p class="grey--text text--lighten-2 text-body-2 mb-0">
             For the movies we share together, even when miles apart.
           </p>
+          <div class="d-flex flex-wrap mt-2" aria-label="Who's online">
+            <span v-for="person in ['Timi', 'Ejay']" :key="person" class="caption mr-4">
+              <v-icon x-small :color="$store.getters.isUserOnline(person) ? '#00e676' : '#808895'">mdi-circle</v-icon>
+              {{ person }} · {{ $store.getters.isUserOnline(person) ? 'Online' : 'Offline' }}
+            </span>
+          </div>
         </div>
 
         <!-- Date Night Planner Button / Summary -->
@@ -93,6 +99,7 @@
       v-model="activeTab"
       background-color="transparent"
       dark
+      show-arrows
       slider-color="#FF4081"
       class="our-view-tabs mb-6"
     >
@@ -765,7 +772,7 @@
       </div>
 
       <!-- Game Mode Selector Buttons -->
-      <div class="d-flex justify-center align-center flex-wrap gap-3 mb-6">
+      <div class="game-mode-selector d-flex justify-center align-center flex-wrap gap-3 mb-6">
         <v-btn rounded depressed :color="activeGameMode === 'crossword' ? '#80CBC4' : 'rgba(255, 255, 255, 0.08)'"
           :class="activeGameMode === 'crossword' ? 'black--text' : 'grey--text text--lighten-1'"
           class="text-none font-weight-black px-6" @click="activeGameMode = 'crossword'">
@@ -960,7 +967,7 @@
 
 <script>
 import WatchTogetherPlayer from "@/components/WatchTogetherPlayer.vue";
-import { mediaKey } from "@/services/playbackSync";
+import { mediaKey, isNewWatchRequest } from "@/services/playbackSync";
 import firebaseSync from "@/services/firebaseSync";
 import aiConciergeService from "@/services/aiConciergeService";
 import WhotGame from "@/components/games/WhotGame.vue";
@@ -1005,6 +1012,8 @@ export default {
       // Active player state
       activeMedia: null,
       hasReceivedRoomMedia: false,
+      roomPlayback: null,
+      roomPlaybackLoaded: false,
       showVideoSourceDialog: false,
       directVideoUrl: "",
       directVideoError: "",
@@ -1130,6 +1139,8 @@ export default {
       window.removeEventListener("storage", this.handleStorageEvent);
       this.activeMedia = null;
       this.hasReceivedRoomMedia = false;
+      this.roomPlayback = null;
+      this.roomPlaybackLoaded = false;
       this.initSync();
       this.loadChatHistory();
     },
@@ -1250,6 +1261,11 @@ export default {
           }
         }, this.roomId);
 
+        const unsubPlayback = firebaseSync.subscribeToPlayback(state => {
+          if (this.roomPlaybackLoaded && isNewWatchRequest(this.roomPlayback || {}, state, mediaKey(this.activeMedia, this.activeProviderId))) this.joinMovieView();
+          this.roomPlayback = state;
+          this.roomPlaybackLoaded = true;
+        }, this.roomId);
         const unsubMedia = firebaseSync.subscribeToActiveMedia((media) => {
           if (!media && !this.hasReceivedRoomMedia && this.activeMedia) {
             // A title in a join link seeds an empty room, never replaces a live room.
@@ -1289,7 +1305,7 @@ export default {
           }
         }, this.roomId);
 
-        this.firebaseUnsubscribers.push(unsubChat, unsubReaction, unsubMedia, unsubDice, unsubScores);
+        this.firebaseUnsubscribers.push(unsubChat, unsubReaction, unsubMedia, unsubDice, unsubScores, unsubPlayback);
       }
 
       // 2. BroadcastChannel for fast same-browser multi-tab sync
@@ -1674,12 +1690,20 @@ export default {
       const changed = mediaKey(this.activeMedia, this.activeProviderId) !== mediaKey(media, media?.providerId || this.activeProviderId);
       this.activeMedia = media;
       if (media?.providerId) this.activeProviderId = media.providerId;
-      if (changed && media) this.showToast('Shared title: ' + (media.title || 'Movie'));
+      if (changed && media) {
+        this.showToast('Shared title: ' + (media.title || 'Movie'));
+        if (this.hasReceivedRoomMedia) this.joinMovieView();
+      }
       try {
         const key = 'our-view-active-media-' + this.roomId;
         if (media) localStorage.setItem(key, JSON.stringify(media));
         else localStorage.removeItem(key);
       } catch (_) { /* Cloud state remains authoritative. */ }
+    },
+    joinMovieView() {
+      this.activeTab = 0;
+      if (this.$route.query.tab !== 'watch') this.$router.replace({ query: { ...this.$route.query, tab: 'watch' } }).catch(() => {});
+      this.$nextTick(() => this.$el.querySelector('.watch-together-tab')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
     },
     useDirectVideo() {
       this.directVideoError = "";
@@ -2035,6 +2059,20 @@ export default {
 </script>
 
 <style scoped>
+.watch-together-tab { scroll-margin-top: 80px; }
+.our-view-page { min-width: 0; max-width: 100%; }
+.our-view-tabs { max-width: 100%; }
+@media (max-width: 960px) {
+  .our-view-tabs .tab-item { min-width: 0; padding: 0 12px; font-size: 12px; letter-spacing: 0; }
+  .our-view-hero { padding: 16px !important; margin-bottom: 12px !important; }
+}
+@media (max-width: 700px) {
+  .game-mode-selector { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px !important; margin-bottom: 12px !important; }
+  .game-mode-selector .v-btn { padding: 0 8px !important; min-width: 0; font-size: 11px; letter-spacing: 0; }
+  .game-mode-selector .v-icon { font-size: 15px !important; margin-right: 4px !important; }
+  .game-night-tab { padding-top: 8px !important; }
+  .couples-scoreboard-card { margin-bottom: 12px !important; }
+}
 .our-view-page {
   max-width: 1440px;
   margin: 0 auto;
