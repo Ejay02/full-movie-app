@@ -14,12 +14,12 @@
   to = "/.netlify/functions/tmdb/:splat"
   status = 200
 
-# SPA fallback — required for Vue Router history mode
 [[redirects]]
   from = "/api/stream"
   to = "/.netlify/functions/stream"
   status = 200
 
+# Keep the SPA fallback after every API route.
 [[redirects]]
   from = "/*"
   to = "/index.html"
