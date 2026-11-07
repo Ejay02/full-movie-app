@@ -261,12 +261,14 @@ export const firebaseSync = {
   },
 
   async setActiveMedia(media, roomId = "date-night") {
-    if (!this.isConfigured()) return;
+    if (!this.isConfigured()) return false;
     try {
       const mediaRef = ref(db, `movie_app/rooms/${roomId}/activeMedia`);
       await set(mediaRef, media || null);
+      return true;
     } catch (err) {
       console.warn("[FirebaseSync] setActiveMedia error:", err);
+      return false;
     }
   },
 

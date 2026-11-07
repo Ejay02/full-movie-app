@@ -214,10 +214,8 @@
             </div>
 
             <watch-together-player ref="togetherPlayer"
-              :key="playbackKey" :media="activeMedia" :room-id="roomId" :current-user="currentUser" />
-            <div class="pa-3">
-              <v-btn small text color="cyan" class="text-none" @click="showVideoSourceDialog = true">Use a direct video</v-btn>
-            </div>
+              :key="playbackKey" :media="activeMedia" :room-id="roomId" :current-user="currentUser"
+              @choose-source="openDirectVideo" />
             <!-- Video Player Controls & Broadcast Toolbar -->
             <div class="player-footer pa-3 d-flex align-center justify-space-between flex-wrap gap-2">
               <div class="d-flex align-center">
@@ -834,15 +832,15 @@
       </v-fade-transition>
     </div>
 
-    <v-dialog v-model="showVideoSourceDialog" max-width="540">
+    <v-dialog v-model="showVideoSourceDialog" :persistent="directVideoSaving" max-width="540">
       <v-card dark class="pa-5">
         <v-card-title class="px-0">Watch a direct video together</v-card-title>
-        <p class="grey--text">Paste an MP4 or WebM video URL that both devices can access. This uses the shared player with linked play, pause and seeking.</p>
-        <v-text-field v-model="directVideoUrl" label="HTTPS video URL" outlined hide-details />
+        <p class="grey--text">Paste an HTTPS link to a video both devices can play, such as MP4, WebM, or HLS (.m3u8). One person adds the link and it updates the room for both viewers.</p>
+        <v-text-field v-model="directVideoUrl" label="HTTPS video URL" type="url" :disabled="directVideoSaving" outlined hide-details @keydown.enter="useDirectVideo" />
         <v-alert v-if="directVideoError" dense type="warning" class="mt-3">{{ directVideoError }}</v-alert>
         <v-card-actions class="px-0 mt-3">
-          <v-btn text @click="showVideoSourceDialog = false">Cancel</v-btn>
-          <v-spacer /><v-btn color="cyan" class="black--text" @click="useDirectVideo">Use video for this title</v-btn>
+          <v-btn text :disabled="directVideoSaving" @click="showVideoSourceDialog = false">Cancel</v-btn>
+          <v-spacer /><v-btn color="cyan" class="black--text" :loading="directVideoSaving" @click="useDirectVideo">Use video for this title</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -1015,6 +1013,7 @@ export default {
       roomPlayback: null,
       roomPlaybackLoaded: false,
       showVideoSourceDialog: false,
+      directVideoSaving: false,
       directVideoUrl: "",
       directVideoError: "",
       activeProviderId: "native",
@@ -1717,16 +1716,37 @@ export default {
       if (this.$route.query.tab !== 'watch') this.$router.replace({ query: { ...this.$route.query, tab: 'watch' } }).catch(() => {});
       this.$nextTick(() => this.$el.querySelector('.watch-together-tab')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
     },
-    useDirectVideo() {
+    openDirectVideo() {
+      this.directVideoUrl = this.activeMedia?.sourceUrl || "";
       this.directVideoError = "";
+      this.showVideoSourceDialog = true;
+    },
+    async useDirectVideo() {
+      if (this.directVideoSaving || !this.activeMedia) return;
+      this.directVideoError = "";
+      let url;
       try {
-        const url = new URL(this.directVideoUrl.trim());
+        url = new URL(this.directVideoUrl.trim());
         if (url.protocol !== "https:" || url.username || url.password) throw new Error();
-        this.activeMedia = { ...this.activeMedia, resumeKey: null, sourceUrl: url.href, useEmbed: false, timestamp: Date.now() };
-        firebaseSync.setActiveMedia(this.activeMedia, this.roomId);
-        this.receiveActiveMedia(this.activeMedia);
-        this.showVideoSourceDialog = false;
-      } catch (_) { this.directVideoError = "Enter a direct HTTPS video URL accessible on both devices."; }
+      } catch (_) {
+        this.directVideoError = "Enter a direct HTTPS video URL accessible on both devices.";
+        return;
+      }
+      if (!this.$store.state.presenceConnected) {
+        this.directVideoError = "Reconnect to the room before sharing a video link.";
+        return;
+      }
+      const room = this.roomId;
+      const media = { ...this.activeMedia, resumeKey: null, sourceUrl: url.href, useEmbed: false, timestamp: Date.now() };
+      this.directVideoSaving = true;
+      try {
+        const saved = await firebaseSync.setActiveMedia(media, room);
+        if (this.roomId !== room) return;
+        if (saved) this.showVideoSourceDialog = false;
+        else this.directVideoError = "Could not share the video link with the room. Please try again.";
+      } finally {
+        this.directVideoSaving = false;
+      }
     },
     streamScheduledMovie() {
       if (!this.nextDateNight || !this.nextDateNight.selectedMovieId) return;

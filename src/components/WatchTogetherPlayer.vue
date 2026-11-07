@@ -5,11 +5,14 @@
       <span class="grey--text text--lighten-1 ml-2">{{ statusText }}</span>
     </div>
     <v-alert v-if="error" dense outlined type="warning" class="ma-3">
-      {{ error }}
-      <v-btn v-if="providerDenied && providerUrl" small text :href="providerUrl" target="_blank" rel="noopener noreferrer">Watch separately</v-btn>
-      <v-btn v-else small text @click="loadSource">Retry stream</v-btn>
+      <p class="mb-2">{{ error }}</p>
+      <div class="d-flex flex-wrap align-center gap-2">
+        <v-btn small outlined color="cyan" class="text-none" @click="$emit('choose-source')">Use a direct video</v-btn>
+        <v-btn small text class="text-none" @click="loadSource">Retry stream</v-btn>
+        <v-btn v-if="providerDenied && providerUrl" small text class="text-none" :href="providerUrl" target="_blank" rel="noopener noreferrer">Watch separately</v-btn>
+      </div>
     </v-alert>
-    <div class="video-stage">
+    <div v-if="loadingSource || nativeSource" class="video-stage">
       <div v-if="loadingSource" class="source-loading" role="status">Finding your stream…</div>
       <video v-if="nativeSource" ref="video" controls playsinline preload="metadata"
         @pointerdown="markLocalControl" @keydown="markLocalControl"
@@ -22,7 +25,7 @@
       </video>
       <v-btn v-if="needsGesture && shared && shared.playing && nativeSource" class="join-playback" color="cyan" dark @click="restorePlayback">Tap to join playback</v-btn>
     </div>
-    <div class="pa-3 d-flex flex-wrap align-center gap-2">
+    <div v-if="nativeSource || !error" class="pa-3 d-flex flex-wrap align-center gap-2">
       <v-btn v-if="nativeSource" small color="cyan" class="black--text text-none" :disabled="!connected" @click="togglePlayback">{{ shared && shared.playing ? 'Pause together' : 'Play together' }}</v-btn>
       <v-btn v-if="nativeSource" small outlined color="cyan" class="text-none" :disabled="!shared || !connected" @click="syncNow">
         Sync to shared position
@@ -31,6 +34,7 @@
       <label v-if="qualityLevels.length" class="quality-choice">Quality
         <select v-model.number="quality" aria-label="Video quality" @change="setQuality"><option :value="-1">Auto</option><option v-for="level in qualityLevels" :key="level.index" :value="level.index">{{ level.label }}</option></select>
       </label>
+      <v-btn v-if="!error" small text color="cyan" class="text-none" @click="$emit('choose-source')">Use a direct video</v-btn>
     </div>
   </div>
 </template>
