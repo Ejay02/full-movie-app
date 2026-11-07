@@ -29,9 +29,15 @@ async function resolveStream(type, id, season, episode, request = fetch) {
   const cached = cache.get(path);
   if (cached && cached.expiresAt > Date.now() + 60000 && cached.cachedAt > Date.now() - 300000) return cached;
   const get = async (url) => {
-    const response = await request(url, { signal: AbortSignal.timeout(15000), redirect: 'error',
-      headers: { Referer: `${BASE}/`, 'User-Agent': 'Mozilla/5.0', Accept: '*/*' } });
-    if (!response.ok) throw new Error('The stream source did not respond. Try again shortly.');
+    const stage = new URL(url).pathname.split('/')[1];
+    let response;
+    try {
+      response = await request(url, { signal: AbortSignal.timeout(10000), redirect: 'manual',
+        headers: { Referer: `${BASE}/`, 'User-Agent': 'Mozilla/5.0', Accept: '*/*' } });
+    } catch (error) {
+      throw new Error(`${stage}-connection-${error.cause?.code || error.name}`);
+    }
+    if (!response.ok) throw new Error(`${stage}-http-${response.status}`);
     return response;
   };
   const metadata = await (await get(BASE + path)).json();
@@ -54,8 +60,15 @@ async function streamResponse(params, method = 'GET') {
     const source = await resolveStream(type, id, season, episode);
     return { statusCode: 200, headers, body: JSON.stringify(source) };
   } catch (error) {
-    return { statusCode: error.message.startsWith('Invalid') ? 400 : 502, headers,
-      body: JSON.stringify({ message: error.message.startsWith('Invalid') ? error.message : 'This stream is unavailable right now. Retry or choose a backup server.' }) };
+    if (error.message.startsWith('Invalid')) {
+      return { statusCode: 400, headers, body: JSON.stringify({ message: error.message }) };
+    }
+    console.warn('Stream lookup failed:', error.message);
+    const denied = /^(api|embed)-http-403$/.test(error.message);
+    return { statusCode: 502, headers, body: JSON.stringify({
+      code: denied ? 'provider_denied' : 'stream_unavailable',
+      message: denied ? 'This provider cannot stream this title in the app right now.' : 'This stream is unavailable right now. Please retry shortly.',
+    }) };
   }
 }
 

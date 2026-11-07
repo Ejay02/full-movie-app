@@ -44,6 +44,7 @@
         <div class="d-flex align-center flex-wrap gap-2">
           <span class="caption cyan--text mr-2">Cinema Player</span>
           <v-btn small text color="cyan" @click="preparePlayback">Reload video</v-btn>
+          <label v-if="qualityLevels.length" class="solo-quality">Quality <select v-model.number="quality" aria-label="Video quality" @change="setQuality"><option :value="-1">Auto</option><option v-for="level in qualityLevels" :key="level.index" :value="level.index">{{ level.label }}</option></select></label>
 
           <!-- Quick Episode Drawer toggle (TV Series only) -->
           <v-btn
@@ -89,7 +90,8 @@
         </div>
         <div v-else-if="streamError" class="stream-status" role="alert">
           <p>{{ streamError }}</p>
-          <v-btn color="cyan" class="black--text text-none" @click="preparePlayback">Retry stream</v-btn>
+          <v-btn v-if="providerDenied && providerUrl" color="cyan" class="black--text text-none" :href="providerUrl" target="_blank" rel="noopener noreferrer">Open provider</v-btn>
+          <v-btn v-else color="cyan" class="black--text text-none" @click="preparePlayback">Retry stream</v-btn>
         </div>
         <!-- Native video player -->
         <div v-if="showNativePlayer" class="native-theater-wrapper">
@@ -285,6 +287,7 @@
 
 <script>
 import { getPersonalMediaSource } from "@/data/personalMediaLibrary";
+import { providerWatchUrl } from "@/services/providerPlayback";
 
 function createInitialMedia() {
   return {
@@ -319,8 +322,13 @@ export default {
       resolvedSource: null,
       sourceLoading: false,
       streamError: "",
+      providerDenied: false,
       sourceRequest: null,
       hlsPlayer: null,
+      quality: -1,
+      qualityLevels: [],
+      recoveryAttempts: 0,
+      recoveryTimer: null,
       providers: [{ name: "Cinema Player", id: "native", movieUrl: () => "", tvUrl: () => "" }],
 
       // Source Switch Toast Notification
@@ -359,6 +367,9 @@ export default {
     activeSource() {
       return this.activeProviderId === "native" ? this.resolvedSource : this.mediaSource;
     },
+    providerUrl() {
+      return providerWatchUrl(this.mediaType, this.mediaId, this.selectedSeason, this.selectedEpisode);
+    },
     hasPersonalSource() {
       return !!this.mediaSource;
     },
@@ -382,19 +393,9 @@ export default {
              this.mediaSource.sourceType === "video");
     },
     activeIframeUrl() {
-      if (this.activeProviderId === "personal") {
-        return this.mediaSource && this.mediaSource.sourceType === "embed"
-          ? this.mediaSource.sourceUrl
-          : "";
-      }
-      const provider = this.providers.find(p => p.id === this.activeProviderId);
-      if (!provider) return "";
-
-      if (this.mediaType === "movie") {
-        return provider.movieUrl(this.mediaId);
-      } else {
-        return provider.tvUrl(this.mediaId, this.selectedSeason, this.selectedEpisode);
-      }
+      return this.activeProviderId === "personal" && this.mediaSource?.sourceType === "embed"
+        ? this.mediaSource.sourceUrl
+        : "";
     },
     currentEpisodeName() {
       if (!this.episodes.length) return "";
@@ -461,6 +462,7 @@ export default {
     window.addEventListener("keydown", this.handleKeyDown);
   },
   beforeDestroy() {
+    clearTimeout(this.recoveryTimer);
     this.saveCurrentProgress();
     this.hasRestoredPosition = false;
     window.removeEventListener("pagehide", this.saveCurrentProgress);
@@ -481,10 +483,24 @@ export default {
       if (this.sourceRequest) { this.sourceRequest.abort(); this.sourceRequest = null; }
       if (this.hlsPlayer) { this.hlsPlayer.destroy(); this.hlsPlayer = null; }
     },
-    async preparePlayback() {
+    setQuality() { if (this.hlsPlayer) this.hlsPlayer.currentLevel = this.quality; },
+    recoverStream() {
+      if (this._isDestroyed || this.recoveryTimer) return;
+      this.saveCurrentProgress();
+      if (this.recoveryAttempts >= 2) { this.streamError = 'The stream stopped. Retry to continue from your saved position.'; return; }
+      this.recoveryAttempts++;
+      this.streamError = 'Reconnecting to the stream…';
+      this.recoveryTimer = setTimeout(() => { this.recoveryTimer = null; this.preparePlayback(true); }, 1500 * this.recoveryAttempts);
+    },
+    async preparePlayback(recovering = false) {
+      this.saveCurrentProgress();
+      if (recovering !== true) this.recoveryAttempts = 0;
+      clearTimeout(this.recoveryTimer); this.recoveryTimer = null;
+      this.qualityLevels = []; this.quality = -1;
       this.hasRestoredPosition = false;
       this.disposePlayback();
       this.streamError = "";
+      this.providerDenied = false;
       this.sourceLoading = false;
       this.hasRestoredPosition = false;
       this.lastTrackedSecond = -15;
@@ -498,11 +514,14 @@ export default {
             season: this.selectedSeason, episode: this.selectedEpisode });
           const response = await fetch(`/api/stream?${query}`, { signal: controller.signal });
           const source = await response.json();
-          if (!response.ok) throw new Error(source.message || 'This stream is unavailable.');
           if (controller.signal.aborted) return;
+          if (!response.ok) {
+            this.providerDenied = source.code === 'provider_denied';
+            throw new Error(source.message || 'This stream is unavailable.');
+          }
           this.resolvedSource = source;
         } catch (error) {
-          if (!controller.signal.aborted) this.streamError = 'Could not load this stream. Please retry.';
+          if (!controller.signal.aborted) this.streamError = error.message;
           return;
         } finally {
           if (!controller.signal.aborted) this.sourceLoading = false;
@@ -521,19 +540,22 @@ export default {
         else this.streamError = 'This browser cannot play the stream. Try Safari, Chrome or Edge.';
         return;
       }
-      const hls = new Hls({ capLevelToPlayerSize: true, maxBufferLength: 30 });
+      const hls = new Hls({ maxBufferLength: 30 });
       this.hlsPlayer = hls;
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (this.hlsPlayer !== hls) return;
+        this.qualityLevels = hls.levels.map((level, index) => ({ index, label: level.height ? `${level.height}p` : `${Math.round(level.bitrate / 1000)} kbps` }));
+      });
       hls.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) {
-          this.streamError = 'The stream stopped. Retry to continue from your saved position.';
-          hls.destroy();
+        if (data.fatal && this.hlsPlayer === hls) {
+          hls.destroy(); this.hlsPlayer = null; this.recoverStream();
         }
       });
       hls.loadSource(source.sourceUrl);
       hls.attachMedia(player);
     },
     handleNativeError() {
-      if (!this.sourceLoading) this.streamError = 'Could not play this stream. Please retry.';
+      if (!this.sourceLoading) this.recoverStream();
     },
     saveCurrentProgress() {
       const player = this.$refs.player;

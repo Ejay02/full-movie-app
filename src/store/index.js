@@ -239,7 +239,8 @@ const store = new Vuex.Store({
     nextDateNight: loadNextDateNight(),
   },
   getters: {
-    isUserOnline: (state) => (user) => state.presenceConnected && Object.values(state.presence[user] || {}).some(value => value === true),
+    isUserOnline: (state) => (user) => state.presenceConnected && Object.values(state.presence[user] || {}).some(value => value === true || value?.online === true),
+    userActivity: (state) => (user) => state.presenceConnected ? Object.values(state.presence[user] || {}).filter(value => value?.online === true).sort((a, b) => b.updatedAt - a.updatedAt)[0] || null : null,
     avatarForUser: (state) => (user) => avatarById(state.profileAvatars[user]?.id) || avatarById('cinema-kid'),
     continueWatchingItems(state) {
       return state.continueWatching;

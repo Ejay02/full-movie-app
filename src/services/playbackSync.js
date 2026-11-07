@@ -1,7 +1,6 @@
 export function isNewWatchRequest(previous, next, key) {
   return !!(previous && next?.playing && next.mediaKey === key && next.watchRequestId && next.watchRequestId !== previous.watchRequestId);
 }
-
 export function mediaKey(media, provider = "") {
   if (!media) return "";
   if (media.resumeKey) return media.resumeKey;
@@ -9,24 +8,18 @@ export function mediaKey(media, provider = "") {
     media.sourceUrl || provider, media.timestamp || 0].join(":");
 }
 
+// Preserve the saved position key when retiring a third-party iframe player.
+export function nativeRoomMedia(media) {
+  if (!media) return null;
+  const legacy = media.providerId && media.providerId !== 'native';
+  if (!legacy && !media.useEmbed) return media;
+  const next = { ...media, resumeKey: mediaKey(media, media.providerId || ''), providerId: 'native', playerVersion: 4, useEmbed: false };
+  if (media.useEmbed) delete next.sourceUrl;
+  return next;
+}
+
 export function playbackPosition(state, now, duration = Infinity) {
   const elapsed = state?.playing ? Math.max(0, (now - state.updatedAt) / 1000) : 0;
   return Math.min(Number.isFinite(duration) ? duration : Infinity,
     Math.max(0, (Number(state?.position) || 0) + elapsed));
-}
-
-export function acceptPlayerEvent(event, frame, url, media) {
-  if (!frame || event.source !== frame.contentWindow || event.origin !== new URL(url).origin) return null;
-  let payload = event.data;
-  try { if (typeof payload === "string") payload = JSON.parse(payload); } catch (_) { return null; }
-  const data = payload?.type === "PLAYER_EVENT" ? payload.data : null;
-  if (!data || !["play", "pause", "seeked", "ended", "timeupdate"].includes(data.event)) return null;
-  if (!Number.isFinite(data.currentTime) || data.currentTime < 0) return null;
-  const id = data.tmdbId || data.mtmdbId;
-  if (id && String(id) !== String(media.mediaId)) return null;
-  if (data.mediaType && data.mediaType !== media.mediaType) return null;
-  if (media.mediaType === "tv" &&
-      ((data.season && Number(data.season) !== Number(media.season || 1)) ||
-       (data.episode && Number(data.episode) !== Number(media.episode || 1)))) return null;
-  return data;
 }

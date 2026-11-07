@@ -32,14 +32,15 @@
               </v-btn>
             </div>
           </div>
-          <p class="grey--text text--lighten-2 text-body-2 mb-0">
-            For the movies we share together, even when miles apart.
-          </p>
-          <div class="d-flex flex-wrap mt-2" aria-label="Who's online">
-            <span v-for="person in ['Timi', 'Ejay']" :key="person" class="caption mr-4">
+          <div class="room-people" aria-label="Who's online">
+            <div v-for="person in ['Timi', 'Ejay']" :key="person" class="room-person">
+              <v-avatar size="30"><v-img :src="$store.getters.avatarForUser(person).src" alt="" /></v-avatar>
+              <span>
               <v-icon x-small :color="$store.getters.isUserOnline(person) ? '#00e676' : '#808895'">mdi-circle</v-icon>
-              {{ person }} · {{ $store.getters.isUserOnline(person) ? 'Online' : 'Offline' }}
-            </span>
+              {{ person }} · {{ activityLabel(person) }}
+              </span>
+              <v-btn v-if="person !== currentUser && canJoinPerson(person)" x-small outlined color="cyan" @click="joinPerson(person)">Join</v-btn>
+            </div>
           </div>
         </div>
 
@@ -99,17 +100,17 @@
       v-model="activeTab"
       background-color="transparent"
       dark
-      show-arrows
+      grow
       slider-color="#FF4081"
       class="our-view-tabs mb-6"
     >
       <v-tab class="text-none font-weight-bold tab-item">
         <v-icon left small color="#FF4081">mdi-television-play</v-icon>
-        Watch Together & Live Chat
+        Watch
       </v-tab>
       <v-tab class="text-none font-weight-bold tab-item">
         <v-icon left small color="#00E5FF">mdi-filmstrip</v-icon>
-        Our Queue
+        Queue
         <v-chip
           v-if="ourQueue.length"
           x-small
@@ -121,11 +122,11 @@
       </v-tab>
       <v-tab class="text-none font-weight-bold tab-item">
         <v-icon left small color="#FF4081">mdi-dice-5</v-icon>
-        Pass the Remote 🎲
+        Pick
       </v-tab>
       <v-tab class="text-none font-weight-bold tab-item">
         <v-icon left small color="#E040FB">mdi-gamepad-variant</v-icon>
-        Game Night 🎮
+        Games
       </v-tab>
     </v-tabs>
 
@@ -213,8 +214,7 @@
             </div>
 
             <watch-together-player ref="togetherPlayer"
-              :key="playbackKey" :media="activeMedia" :provider="activeProviderId"
-              :url="playerUrl" :room-id="roomId" :current-user="currentUser" />
+              :key="playbackKey" :media="activeMedia" :room-id="roomId" :current-user="currentUser" />
             <div class="pa-3">
               <v-btn small text color="cyan" class="text-none" @click="showVideoSourceDialog = true">Use a direct video</v-btn>
             </div>
@@ -967,7 +967,7 @@
 
 <script>
 import WatchTogetherPlayer from "@/components/WatchTogetherPlayer.vue";
-import { mediaKey, isNewWatchRequest } from "@/services/playbackSync";
+import { mediaKey, isNewWatchRequest, nativeRoomMedia } from "@/services/playbackSync";
 import firebaseSync from "@/services/firebaseSync";
 import aiConciergeService from "@/services/aiConciergeService";
 import WhotGame from "@/components/games/WhotGame.vue";
@@ -1130,7 +1130,12 @@ export default {
     },
   },
   watch: {
-    activeGameMode(mode) { try { localStorage.setItem(`last-game:${this.roomId}`, mode); } catch (_) { /* Optional navigation preference. */ } },
+    activeTab(value) {
+      const tab = ['watch', 'queue', 'dice', 'games'][value];
+      if (this.$route.query.tab !== tab) this.$router.replace({ query: { ...this.$route.query, tab } }).catch(() => {});
+      this.publishActivity();
+    },
+    activeGameMode(mode) { try { localStorage.setItem(`last-game:${this.roomId}`, mode); } catch (_) { /* Optional navigation preference. */ } this.publishActivity(); },
     roomId() {
       this.activeGameMode = savedGameMode(this.roomId);
       this.firebaseUnsubscribers.forEach((stop) => stop());
@@ -1684,9 +1689,7 @@ export default {
       if (this.$refs.togetherPlayer) this.$refs.togetherPlayer.syncNow();
     },
     receiveActiveMedia(media) {
-      if (media && !media.sourceUrl && media.providerId !== 'native') {
-        media = { ...media, resumeKey: mediaKey(media, media.providerId || this.activeProviderId), providerId: 'native', playerVersion: 3, useEmbed: false };
-      }
+      media = nativeRoomMedia(media);
       const changed = mediaKey(this.activeMedia, this.activeProviderId) !== mediaKey(media, media?.providerId || this.activeProviderId);
       this.activeMedia = media;
       if (media?.providerId) this.activeProviderId = media.providerId;
@@ -1699,6 +1702,15 @@ export default {
         if (media) localStorage.setItem(key, JSON.stringify(media));
         else localStorage.removeItem(key);
       } catch (_) { /* Cloud state remains authoritative. */ }
+    },
+    publishActivity() { window.dispatchEvent(new CustomEvent('room-activity-changed', { detail: { tab: ['watch', 'queue', 'dice', 'games'][this.activeTab], game: this.activeGameMode } })); },
+    activityLabel(person) { return this.$store.getters.isUserOnline(person) ? this.$store.getters.userActivity(person)?.label || 'Online' : 'Offline'; },
+    canJoinPerson(person) { return !!this.$store.getters.userActivity(person)?.room; },
+    joinPerson(person) {
+      const activity = this.$store.getters.userActivity(person);
+      if (!activity?.room) return;
+      if (activity.game) { this.activeGameMode = activity.game; localStorage.setItem(`last-game:${activity.room}`, activity.game); }
+      this.$router.push({ path: '/our-view', query: { room: activity.room, tab: activity.tab || 'watch' } }).catch(() => {});
     },
     joinMovieView() {
       this.activeTab = 0;
@@ -2126,6 +2138,19 @@ export default {
 /* Tabs */
 .our-view-tabs {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: sticky; top: 80px; z-index: 7; background: #0d1422 !important; border-radius: 12px;
+}
+.room-people { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+.room-person { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+@media (max-width: 600px) {
+  .our-view-tabs { top: 72px; margin-bottom: 12px !important; }
+  .our-view-tabs .tab-item { padding: 0 5px; font-size: 12px; min-width: 0; }
+  .our-view-tabs .v-icon { display: none; }
+  .our-view-tabs .v-chip { margin-left: 4px !important; }
+  .our-view-hero { padding: 12px !important; border-radius: 16px; }
+  .date-night-action-box { margin-top: 10px; }
+  .plan-date-btn { height: 30px !important; font-size: 11px; }
+  .room-control-bar { gap: 8px; padding: 8px !important; }
 }
 
 .tab-item {

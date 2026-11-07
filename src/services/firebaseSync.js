@@ -44,23 +44,28 @@ export const firebaseSync = {
     if (!this.isConfigured()) { callback({}); return () => {}; }
     return onValue(ref(db, 'movie_app/presence'), snapshot => callback(snapshot.val() || {}), () => callback({}));
   },
-  trackPresence(user) {
+  trackPresence(user, activity = null) {
     if (!this.isConfigured() || !['Timi', 'Ejay'].includes(user)) return () => {};
     let stopped = false, generation = 0;
+    let activeConnection = null;
+    const value = () => activity ? { online: true, ...activity, updatedAt: Date.now() } : true;
     const connections = new Set();
     const stop = this.subscribeToConnection(async connected => {
       const attempt = ++generation;
+      activeConnection = null;
       if (!connected || stopped) return;
       const connection = push(ref(db, `movie_app/presence/${user}`));
       connections.add(connection);
       try {
         // Register server cleanup before declaring this browser online.
         await onDisconnect(connection).remove();
-        if (!stopped && attempt === generation) await set(connection, true);
+        if (!stopped && attempt === generation) { activeConnection = connection; await set(connection, value()); }
         if (stopped || attempt !== generation) await remove(connection);
       } catch (error) { console.warn('Presence unavailable:', error.message); }
     });
-    return () => { stopped = true; stop(); connections.forEach(connection => { remove(connection).catch(() => {}); }); };
+    const dispose = () => { stopped = true; activeConnection = null; stop(); connections.forEach(connection => { remove(connection).catch(() => {}); }); };
+    dispose.update = next => { activity = next; if (activeConnection && !stopped) set(activeConnection, value()).catch(() => {}); };
+    return dispose;
   },
   subscribeToProfileAvatars(callback) {
     if (!this.isConfigured()) return () => {};

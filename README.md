@@ -64,7 +64,19 @@ Check out the live demo of the app [here](https://latest-movie-app-ej.netlify.ap
 - Set `TMDB_API_TOKEN` in `.env` for local proxy usage.
 - Netlify deployments should configure `TMDB_API_TOKEN` as an environment variable for the function runtime.
 
+## Production deployment
+
+Netlify secret scanning excludes only the eight public Firebase web configuration variables, which the browser SDK requires. Scanning stays enabled for private credentials such as `TMDB_API_TOKEN` and `API_TOKEN`. These public client identifiers were the false positives blocking the October 21–22 releases.
+
+The live site is https://timi-bobo.netlify.app/. Netlify must publish a fresh `npm run build` output **and** both functions (`tmdb`, `stream`); pushing Git alone does not confirm a successful deployment. `netlify.toml` declares the build command and Node 24 (Firebase's installed SDK requires 24.12 or newer). After release, verify `/api/stream?type=movie&id=361743` returns JSON and test playback on the public URL in an isolated room.
+
 ## Shared games and playback
+
+- Mobile navigation has a visible menu with every main destination. The room's Watch, Queue, Pick and Games tabs stay visible while scrolling.
+- The room shows both avatars, live activity and a Join action. Presence remains independent for each browser connection.
+- Home's Resume date night card previews the shared movie position and unfinished game before opening either. It never starts a fresh match.
+- Six new selectable picture-crossword editions offer Easy, Standard and Challenging levels. New boards trim unused outer space; old puzzle IDs retain their original cells so saves stay valid. Choosing a replacement board requires an explicit Start new board action.
+- Video quality lists actual HLS variants. Fatal stream errors retry at most twice, preserving shared or saved progress, then offer manual retry. Together Player reports buffering separately from room connectivity.
 
 - First-visit setup asks who is watching and offers five avatars. Each person's avatar is saved locally and shared through Firebase; it can be changed later from the profile menu.
 - Avatar dots use live Firebase presence: grey offline, profile colour online. Each browser registers its own connection with server-side disconnect cleanup, so closing one tab does not mark another connected tab offline. The room and profile menu show both people's status.
@@ -76,9 +88,10 @@ Check out the live demo of the app [here](https://latest-movie-app-ej.netlify.ap
 - Select a title, then **Use a direct video** to enter an HTTPS MP4/WebM URL accessible on both devices. Privately configured video entries in `src/data/personalMediaLibrary.js` also use the shared player. A URL must point to a playable video, not a webpage, and must stay accessible for both viewers.
 - Public iframe server choices have been removed: they reject sandboxed playback and cannot provide the room's linked controls. Saved selections are reopened with Together Player, preserving any recorded position. Privately configured embeds retain the restrictive sandbox.
 - Home Continue Watching opens the player directly. Video progress is saved on pause, seeking, page hide and navigation; loading events cannot overwrite it before restoration. Older iframe entries with no recorded position show Watch instead of Resume.
-- Crossword Go starts with two original connected 15×15 picture-and-word puzzles with answers up to nine letters. Correct letters earn 1 point, completed words 5 extra. On Go, each wrong letter costs 1 point and returns to the rack; the player keeps their turn to retry. Submitted moves persist per room; unfinished placements are cached per player and revision. Existing 8×8 boards remain playable and offer Start a larger crossword. Small screens can scroll the board horizontally.
-- Word Duel remains available. Whot keeps turn status, the card to match and the draw action beside the hand, in the page flow with a sticky panel rather than a fixed overlay. Cards and game selectors adapt to narrow screens; the room tabs have scroll arrows.
-- Inter typography and cinematic CSS effects apply throughout the app. Motion respects reduced-motion preferences and quiets during video playback. Effects are resolution-independent; actual video quality comes from the source.
+- Crossword Go uses connected picture-and-word puzzles with answers up to nine letters. Correct letters earn 1 point, completed words 5 extra. On Go, each wrong letter costs 1 point and returns to the rack; the player keeps their turn to retry. Submitted moves persist per room; unfinished placements are cached per player and revision. Existing boards remain playable. Small screens can scroll the board horizontally.
+- Word Duel remains available. Whot keeps turn status, the card to match and the draw action beside the hand, in the page flow with a sticky panel rather than a fixed overlay. Cards and game selectors adapt to narrow screens.
+- Geist is used for controls and body text, with Lora for display headings. Motion respects reduced-motion preferences and quiets during video playback. Actual video quality comes from the source.
+- If the upstream denies Netlify's stream lookup, the app offers the provider's separate viewing page. Use a direct HTTPS video in Our View to keep both devices synchronized.
 - Local development needs both `npm run proxy` and `npm run serve`. Netlify routes `/api/stream` to the included stream function. The resolver accepts only validated movie/episode identifiers, fetches a fixed upstream origin, and never executes provider scripts or proxies arbitrary URLs.
 - Run `npm test` for offline regression checks and `npm run lint -- --no-fix` for linting. Test live playback in an isolated room, rather than changing the active date-night room.
 

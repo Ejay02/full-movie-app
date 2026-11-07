@@ -586,7 +586,7 @@ button:disabled { cursor: default; }
 }
 /* Keep the hand and its controls in one flow, including split-screen windows. */
 .whot-game-container { container-type: inline-size; }
-.hand-controls { position: sticky; top: 72px; z-index: 3; }
+.hand-controls { position: sticky; top: 128px; z-index: 3; }
 .player-cards-row { gap: 10px; padding: 8px 2px 16px; }
 .whot-card { flex-shrink: 0; }
 .card-back-pattern { max-width: 100%; overflow: hidden; padding: 3px; letter-spacing: 1px; }
@@ -609,6 +609,6 @@ button:disabled { cursor: default; }
 }
 @media (max-width: 600px) {
   .whot-game-container { padding: 6px !important; }
-  .hand-controls { top: 64px; }
+  .hand-controls { top: 120px; }
 }
 </style>

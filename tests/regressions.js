@@ -44,6 +44,30 @@ function whotState(number) {
   return state;
 }
 async function main() {
+  await test('All Vue templates compile for production', () => {
+    const utils = require('@vue/component-compiler-utils');
+    const visit = directory => {
+      for (const name of fs.readdirSync(directory)) {
+        const filename = path.join(directory, name);
+        if (fs.statSync(filename).isDirectory()) visit(filename);
+        else if (filename.endsWith('.vue')) {
+          const template = compiler.parseComponent(fs.readFileSync(filename, 'utf8')).template;
+          if (template) assert.deepEqual(utils.compileTemplate({ source: template.content, filename, compiler }).errors, [], filename);
+        }
+      }
+    };
+    visit(path.join(root, 'src'));
+  });
+  await test('Legacy iframe rooms migrate without losing their paused position key', () => {
+    const old = { mediaType: 'movie', mediaId: 361743, providerId: 'vidlink', useEmbed: true, sourceUrl: 'https://vidlink.pro/movie/361743', timestamp: 42 };
+    const migrated = sync.nativeRoomMedia(old);
+    assert.equal(migrated.providerId, 'native'); assert.equal(migrated.useEmbed, false);
+    assert.equal(migrated.sourceUrl, undefined);
+    assert.equal(sync.mediaKey(migrated, 'native'), sync.mediaKey(old, 'vidlink'));
+    assert.equal(sync.nativeRoomMedia(migrated), migrated);
+    const direct = { ...old, providerId: 'native', useEmbed: false, sourceUrl: 'https://example.com/video.mp4' };
+    assert.equal(sync.nativeRoomMedia(direct), direct);
+  });
   await test('Only a new play request switches a room out of Games', () => {
     const old = { mediaKey: 'movie', playing: false, watchRequestId: 'old' };
     const play = { ...old, playing: true, watchRequestId: 'new' };
@@ -71,12 +95,19 @@ async function main() {
     await listeners[0]({ val: () => true }); await listeners[1]({ val: () => true });
     assert.equal(writes.length, 2); assert.notEqual(writes[0][0], writes[1][0]);
     stopFirst(); assert.ok(removed.includes(writes[0][0])); assert.ok(!removed.includes(writes[1][0]));
+    stopFirst.update({ room: 'closed', label: 'Browsing' });
+    assert.equal(writes.length, 2, 'activity cannot resurrect a closed connection');
+    stopSecond.update({ room: 'review', tab: 'games', label: 'Playing WHOT!' });
+    assert.equal(writes[2][0], writes[1][0]);
+    assert.equal(writes[2][1].online, true);
+    assert.equal(writes[2][1].tab, 'games');
     await listeners[1]({ val: () => false }); await listeners[1]({ val: () => true });
-    assert.equal(writes.length, 3, 'reconnection gets its own disconnect cleanup');
+    assert.equal(writes.length, 4, 'reconnection gets its own disconnect cleanup');
+    assert.equal(writes[3][1].label, 'Playing WHOT!', 'reconnection restores current activity');
     stopSecond();
     const stopPending = service.trackPresence('Ejay');
     const pending = listeners[2]({ val: () => true }); stopPending(); await pending;
-    assert.equal(writes.length, 3, 'closing while registering cannot resurrect presence');
+    assert.equal(writes.length, 4, 'closing while registering cannot resurrect presence');
   });
   await test('Avatar choices persist per person and stale cloud updates cannot replace them', () => {
     let profiles = avatars.mergeAvatar({}, 'Timi', { id: 'hearts', updatedAt: 20 });
@@ -265,16 +296,6 @@ async function main() {
     assert.notEqual(sync.mediaKey(media, 'vidlink'), sync.mediaKey({ ...media, episode: 2 }, 'vidlink'));
     assert.notEqual(sync.mediaKey(media, 'vidlink'), sync.mediaKey(media, 'other'));
   });
-  await test('Embedded player events require exact frame, origin and episode', () => {
-    const frame = { contentWindow: {} }, media = { mediaId: 1, mediaType: 'tv', season: 1, episode: 1 };
-    const event = { source: frame.contentWindow, origin: 'https://vidlink.pro',
-      data: { type: 'PLAYER_EVENT', data: { event: 'play', currentTime: 12, tmdbId: 1, season: 1, episode: 1 } } };
-    assert.ok(sync.acceptPlayerEvent(event, frame, 'https://vidlink.pro/tv/1/1/1', media));
-    assert.equal(sync.acceptPlayerEvent({ ...event, origin: 'https://ads.example' }, frame, 'https://vidlink.pro', media), null);
-    assert.equal(sync.acceptPlayerEvent({ ...event, source: {} }, frame, 'https://vidlink.pro', media), null);
-    event.data.data.episode = 2;
-    assert.equal(sync.acceptPlayerEvent(event, frame, 'https://vidlink.pro', media), null);
-  });
   await test('Native remote seeking and pausing do not publish an echo', async () => {
     let writes = 0;
     const player = load('src/components/WatchTogetherPlayer.vue', {
@@ -311,13 +332,13 @@ async function main() {
     assert.equal(games.readGame('whot', 'after'), null);
     assert.equal(games.readGame('whot', 'before').timiHand[0].number, 5);
   });
-  await test('Both external players forbid popup and top navigation permissions', () => {
-    for (const file of ['src/components/WatchTogetherPlayer.vue', 'src/views/WatchView.vue']) {
-      const source = fs.readFileSync(path.join(root, file), 'utf8');
-      const sandbox = source.match(/sandbox="([^"]+)"/)[1];
-      assert.ok(sandbox.includes('allow-scripts'));
-      assert.ok(!sandbox.includes('allow-popups')); assert.ok(!sandbox.includes('allow-top-navigation'));
-    }
+  await test('Together Player has no iframe fallback and private embeds remain sandboxed', () => {
+    const shared = fs.readFileSync(path.join(root, 'src/components/WatchTogetherPlayer.vue'), 'utf8');
+    assert.doesNotMatch(shared, /<iframe\b/i);
+    const solo = fs.readFileSync(path.join(root, 'src/views/WatchView.vue'), 'utf8');
+    const sandbox = solo.match(/sandbox="([^"]+)"/)[1];
+    assert.ok(sandbox.includes('allow-scripts'));
+    assert.doesNotMatch(sandbox, /allow-popups|allow-top-navigation/);
   });
   console.log(checks + ' regression checks passed.');
 }

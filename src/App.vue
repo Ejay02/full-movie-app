@@ -39,6 +39,7 @@ export default {
   },
 
   data: () => ({ stopAvatarSync: null, stopPresence: null, stopPresenceSync: null, stopConnection: null }),
+  watch: { '$route.fullPath'() { this.updateActivity(); } },
   mounted() {
     this.stopAvatarSync = firebaseSync.subscribeToProfileAvatars(this.receiveAvatars);
     window.addEventListener('storage', this.receiveAvatarStorage);
@@ -48,6 +49,7 @@ export default {
     window.addEventListener('user-identity-changed', this.startPresence);
     window.addEventListener('pagehide', this.endPresence);
     window.addEventListener('pageshow', this.startPresence);
+    window.addEventListener('room-activity-changed', this.updateActivity);
   },
   beforeDestroy() {
     if (this.stopAvatarSync) this.stopAvatarSync();
@@ -58,14 +60,24 @@ export default {
     window.removeEventListener('user-identity-changed', this.startPresence);
     window.removeEventListener('pagehide', this.endPresence);
     window.removeEventListener('pageshow', this.startPresence);
+    window.removeEventListener('room-activity-changed', this.updateActivity);
   },
   methods: {
     endPresence() { if (this.stopPresence) this.stopPresence(); this.stopPresence = null; },
     startPresence(event) {
       this.endPresence();
       const user = typeof event?.detail === 'string' ? event.detail : localStorage.getItem('our_view_user');
-      this.stopPresence = firebaseSync.trackPresence(user);
+      this.stopPresence = firebaseSync.trackPresence(user, this.currentActivity());
     },
+    currentActivity(event) {
+      const room = this.$route.path === '/our-view' ? this.$route.query.room || 'date-night' : '';
+      const tab = event?.detail?.tab || this.$route.query.tab || 'watch';
+      const game = event?.detail?.game || localStorage.getItem(`last-game:${room}`) || 'whot';
+      const games = { whot: 'WHOT!', crossword: 'Crossword Go', wordDuel: 'Word Duel', scrabble: 'Words with Friends' };
+      const label = room ? (tab === 'games' ? `Playing ${games[game] || 'games'}` : ({ watch: 'In the cinema', queue: 'Choosing a movie', dice: 'Picking a movie' }[tab] || 'In the room')) : 'Browsing';
+      return { room, tab, game, label };
+    },
+    updateActivity(event) { this.stopPresence?.update?.(this.currentActivity(event)); },
     receiveAvatars(profiles) {
       Object.entries(profiles).forEach(([user, avatar]) => this.$store.commit('SET_PROFILE_AVATAR', { user, avatar }));
     },
@@ -75,6 +87,10 @@ export default {
 </script>
 
 <style>
+:root {
+  --font-sans: "Geist", system-ui, sans-serif;
+  --font-serif: "Lora", Georgia, serif;
+}
 /* Vuetify typography utilities carry their own font declaration. */
 .v-application,
 .v-application [class*="text-h"],
@@ -90,7 +106,10 @@ export default {
 .v-application .body-2,
 .v-application .caption,
 .v-application .overline {
-  font-family: "Inter", system-ui, sans-serif !important;
+  font-family: var(--font-sans) !important;
+}
+.v-application :is(h1, h2, .page-title, .section-title, .media-title) {
+  font-family: var(--font-serif) !important;
 }
 .app-shell {
   background: radial-gradient(

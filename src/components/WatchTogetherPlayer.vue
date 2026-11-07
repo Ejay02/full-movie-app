@@ -1,31 +1,36 @@
 <template>
   <div class="together-player">
     <div class="playback-status pa-3" role="status" aria-live="polite">
-      <strong :class="connected ? 'cyan--text' : 'amber--text'">{{ connected ? 'Room connected' : 'Reconnecting to room…' }}</strong>
+      <strong :class="connected ? 'cyan--text' : 'amber--text'">{{ connected ? 'Watch together' : 'Reconnecting to room…' }}</strong>
       <span class="grey--text text--lighten-1 ml-2">{{ statusText }}</span>
     </div>
-    <v-alert v-if="error" dense outlined type="warning" class="ma-3">{{ error }} <v-btn v-if="provider === 'native'" small text @click="loadSource">Retry stream</v-btn></v-alert>
+    <v-alert v-if="error" dense outlined type="warning" class="ma-3">
+      {{ error }}
+      <v-btn v-if="providerDenied && providerUrl" small text :href="providerUrl" target="_blank" rel="noopener noreferrer">Watch separately</v-btn>
+      <v-btn v-else small text @click="loadSource">Retry stream</v-btn>
+    </v-alert>
     <div class="video-stage">
       <div v-if="loadingSource" class="source-loading" role="status">Finding your stream…</div>
       <video v-if="nativeSource" ref="video" controls playsinline preload="metadata"
         @pointerdown="markLocalControl" @keydown="markLocalControl"
         @loadedmetadata="onVideoReady" @durationchange="onVideoReady" @canplay="onVideoReady" @play="publish('play')"
         @pause="publish('pause')" @seeked="publish('seeked')" @timeupdate="heartbeat" @ended="publish('ended')"
-        @error="error = 'The video could not load. Retry the stream.'">
+        @waiting="buffering = true" @stalled="buffering = true" @playing="onPlaying"
+        @error="recoverStream">
         <track v-for="track in nativeSource.subtitleTracks || []" :key="track.src" kind="subtitles"
           :src="track.src" :srclang="track.srclang" :label="track.label" :default="!!track.default" />
       </video>
-      <iframe v-else-if="provider !== 'native'" ref="embed" :src="embedUrl" title="Movie player" allowfullscreen
-        sandbox="allow-scripts allow-same-origin allow-presentation"
-        allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerpolicy="origin" />
       <v-btn v-if="needsGesture && shared && shared.playing && nativeSource" class="join-playback" color="cyan" dark @click="restorePlayback">Tap to join playback</v-btn>
     </div>
     <div class="pa-3 d-flex flex-wrap align-center gap-2">
       <v-btn v-if="nativeSource" small color="cyan" class="black--text text-none" :disabled="!connected" @click="togglePlayback">{{ shared && shared.playing ? 'Pause together' : 'Play together' }}</v-btn>
-      <v-btn small outlined color="cyan" class="text-none" :disabled="!shared || !connected" @click="syncNow">
-        {{ nativeSource ? 'Sync to shared position' : 'Align to shared time' }}
+      <v-btn v-if="nativeSource" small outlined color="cyan" class="text-none" :disabled="!shared || !connected" @click="syncNow">
+        Sync to shared position
       </v-btn>
       <span v-if="shared" class="caption grey--text">{{ shared.sender }} · {{ shared.playing ? 'Playing' : 'Paused' }} at {{ formatTime(sharedPosition) }}</span>
+      <label v-if="qualityLevels.length" class="quality-choice">Quality
+        <select v-model.number="quality" aria-label="Video quality" @change="setQuality"><option :value="-1">Auto</option><option v-for="level in qualityLevels" :key="level.index" :value="level.index">{{ level.label }}</option></select>
+      </label>
     </div>
   </div>
 </template>
@@ -33,35 +38,31 @@
 <script>
 import firebaseSync from "@/services/firebaseSync";
 import { getPersonalMediaSource } from "@/data/personalMediaLibrary";
-import { mediaKey, playbackPosition, acceptPlayerEvent } from "@/services/playbackSync";
+import { mediaKey, playbackPosition } from "@/services/playbackSync";
+import { providerWatchUrl } from "@/services/providerPlayback";
 
 export default {
-  props: { media: Object, provider: String, url: String, roomId: String, currentUser: String },
-  data: () => ({ connected: false, offset: 0, shared: null, error: "", needsGesture: false,
+  props: { media: Object, roomId: String, currentUser: String },
+  data: () => ({ connected: false, offset: 0, shared: null, error: "", needsGesture: false, providerDenied: false,
+    buffering: false, recoveryAttempts: 0, recoveryTimer: null, quality: -1, qualityLevels: [],
     resolvedSource: null, loadingSource: false, sourceReady: false, playbackLoaded: false, sourceRequest: null, sourceGeneration: 0, hls: null, closing: false,
     clientId: `${Date.now()}-${Math.random().toString(36).slice(2)}`, applyingUntil: 0, localControlUntil: 0,
-    lastSent: 0, stops: [], embedStart: null, embedPlaying: false, tick: Date.now(), timer: null }),
+    lastSent: 0, stops: [], tick: Date.now(), timer: null }),
   computed: {
-    nativeSource() {
-      if (this.provider === 'native' && !this.media.sourceUrl) return this.resolvedSource;
-      if (this.media.useEmbed) return null;
-      if (this.media.sourceUrl) return { sourceUrl: this.media.sourceUrl, subtitleTracks: [] };
+    directSource() {
+      if (!this.media.useEmbed && this.media.sourceUrl) return { sourceUrl: this.media.sourceUrl, subtitleTracks: [] };
       const source = getPersonalMediaSource(this.media.mediaType, this.media.mediaId);
       return source?.sourceType === "video" ? source : null;
     },
-    key() { return mediaKey(this.media, this.provider); },
+    nativeSource() { return this.directSource || this.resolvedSource; },
+    providerUrl() { return providerWatchUrl(this.media.mediaType, this.media.mediaId, this.media.season || 1, this.media.episode || 1); },
+    key() { return mediaKey(this.media, 'native'); },
     sharedPosition() { return playbackPosition(this.shared, this.tick + this.offset); },
-    embedUrl() {
-      if (this.embedStart === null || this.provider !== "vidlink") return this.url;
-      const url = new URL(this.url);
-      url.searchParams.set("startAt", Math.floor(this.embedStart));
-      url.searchParams.set("autoplay", this.shared?.playing ? "true" : "false");
-      return url.toString();
-    },
     statusText() {
       if (this.loadingSource) return 'Loading the shared player';
-      if (this.provider === 'native' && !this.nativeSource) return 'Stream unavailable';
-      if (!this.nativeSource) return "Shared title · provider playback is independent";
+      if (this.error) return 'Playback needs attention';
+      if (this.buffering && this.shared?.playing) return 'Buffering on this device…';
+      if (!this.nativeSource) return 'Stream unavailable';
       if (this.needsGesture && this.shared?.playing) return "Tap to allow playback on this device";
       if (!this.shared) return "Press play when you are ready";
       return this.shared.playing ? "Shared playback is playing" : "Shared playback is paused";
@@ -77,25 +78,39 @@ export default {
       this.shared = state;
       if (state.clientId !== this.clientId && this.nativeSource) this.restorePlayback();
     }, this.roomId, (error) => { this.error = `Playback sync unavailable: ${error.message}`; }));
-    window.addEventListener("message", this.onPlayerMessage);
     this.timer = setInterval(() => { this.tick = Date.now(); }, 1000);
   },
   beforeDestroy() {
     this.closing = true;
     if (this.sourceRequest) this.sourceRequest.abort();
+    clearTimeout(this.recoveryTimer);
     if (this.hls) this.hls.destroy();
     this.stops.forEach((stop) => stop());
     clearInterval(this.timer);
-    window.removeEventListener("message", this.onPlayerMessage);
   },
   methods: {
     markLocalControl() { this.localControlUntil = Date.now() + 3000; },
-    async loadSource() {
+    onPlaying() { this.buffering = false; this.error = ''; },
+    setQuality() { if (this.hls) { this.hls.autoLevelCapping = -1; this.hls.currentLevel = this.quality; } },
+    recoverStream() {
+      if (this.closing || this.recoveryTimer) return;
+      if (this.recoveryAttempts >= 2) { this.error = 'The stream stopped. Retry to continue at the shared position.'; return; }
+      this.recoveryAttempts++;
+      this.buffering = true;
+      this.recoveryTimer = setTimeout(() => { this.recoveryTimer = null; this.loadSource(true); }, 1500 * this.recoveryAttempts);
+    },
+    async loadSource(recovering = false) {
+      if (recovering !== true) this.recoveryAttempts = 0;
+      clearTimeout(this.recoveryTimer); this.recoveryTimer = null;
+      this.qualityLevels = []; this.quality = -1;
       this.sourceReady = false;
       const generation = ++this.sourceGeneration;
       if (this.sourceRequest) this.sourceRequest.abort();
       this.error = '';
-      if (this.provider === 'native' && !this.media.sourceUrl) {
+      this.providerDenied = false;
+      if (this.hls) { this.hls.destroy(); this.hls = null; }
+      this.resolvedSource = null;
+      if (!this.directSource) {
         const controller = new AbortController();
         this.sourceRequest = controller;
         this.loadingSource = true;
@@ -104,12 +119,18 @@ export default {
             season: this.media.season || 1, episode: this.media.episode || 1 });
           const response = await fetch(`/api/stream?${query}`, { signal: controller.signal });
           const source = await response.json();
-          if (!response.ok) throw new Error(source.message || 'Stream unavailable.');
+          if (!response.ok) {
+            this.providerDenied = source.code === 'provider_denied';
+            throw new Error(source.message || 'Stream unavailable.');
+          }
           if (!controller.signal.aborted) this.resolvedSource = source;
         } catch (error) {
-          if (!controller.signal.aborted) this.error = error.message;
+          if (!controller.signal.aborted) {
+            this.error = error.message;
+            if (!this.providerDenied) this.recoverStream();
+          }
         } finally { if (!controller.signal.aborted) this.loadingSource = false; }
-        if (controller.signal.aborted || this.sourceRequest !== controller) return;
+        if (controller.signal.aborted || this.sourceRequest !== controller || !this.resolvedSource) return;
       }
       await this.$nextTick();
       if (this.closing || generation !== this.sourceGeneration) return;
@@ -129,10 +150,14 @@ export default {
         else this.error = 'This browser cannot play this stream. Try Safari, Chrome or Edge.';
         return;
       }
-      const player = new Hls({ capLevelToPlayerSize: true, maxBufferLength: 30 });
+      const player = new Hls({ maxBufferLength: 30 });
       this.hls = player;
+      player.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (this.hls !== player) return;
+        this.qualityLevels = player.levels.map((level, index) => ({ index, label: level.height ? `${level.height}p` : `${Math.round(level.bitrate / 1000)} kbps` }));
+      });
       player.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) { this.error = 'The stream stopped loading. Retry to reconnect at your shared position.'; player.destroy(); }
+        if (data.fatal && this.hls === player) { player.destroy(); this.hls = null; this.recoverStream(); }
       });
       player.loadSource(source.sourceUrl);
       player.attachMedia(video);
@@ -190,22 +215,9 @@ export default {
     heartbeat() {
       if (this.shared?.clientId === this.clientId && Date.now() - this.lastSent > 5000) this.publish();
     },
-    onPlayerMessage(event) {
-      if (this.nativeSource || this.provider !== "vidlink") return;
-      const data = acceptPlayerEvent(event, this.$refs.embed, this.url, this.media);
-      if (!data) return;
-      if (data.event === "play") this.embedPlaying = true;
-      if (["pause", "ended"].includes(data.event)) this.embedPlaying = false;
-      // Keep one reporter for periodic events; explicit actions can take control.
-      if (data.event === "timeupdate" && this.shared && this.shared.clientId !== this.clientId) return;
-      if (data.event === "timeupdate" && Date.now() - this.lastSent < 5000) return;
-      this.send(data.currentTime, this.embedPlaying);
-    },
     syncNow() {
       if (!this.shared) { this.error = "No shared playback position yet. Start the video first."; return; }
-      if (this.nativeSource) this.restorePlayback();
-      else if (this.provider === "vidlink") this.embedStart = playbackPosition(this.shared, Date.now() + this.offset);
-      else this.error = `Set the player to ${this.formatTime(this.sharedPosition)}. This provider has no linked playback controls.`;
+      this.restorePlayback();
     },
   },
 };
@@ -215,7 +227,9 @@ export default {
 .together-player { background: #05070d; }
 .video-stage { position: relative; aspect-ratio: 16 / 9; background: #000; }
 .source-loading { position: absolute; inset: 0; display: grid; place-items: center; color: #b3d5df; }
-video, iframe { width: 100%; height: 100%; border: 0; display: block; }
+video { width: 100%; height: 100%; display: block; }
 .join-playback { position: absolute; top: 45%; left: 50%; transform: translateX(-50%); }
 .gap-2 { gap: 8px; }
+.quality-choice { color: #bdcbd5; font-size: 12px; margin-left: auto; }
+.quality-choice select { background: #172231; color: #fff; padding: 8px; margin-left: 6px; border-radius: 6px; }
 </style>

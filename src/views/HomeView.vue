@@ -19,6 +19,7 @@
   </v-container>
 
   <div class="home-page px-2 px-sm-4" v-else>
+    <date-night-resume />
     <!-- Continue Watching Section -->
     <ContinueWatchingSection />
 
@@ -82,6 +83,7 @@ import MovieCard from "../components/MovieCard.vue";
 import TvCard from "../components/TvCard.vue";
 import UpcomingMovies from "@/components/UpcomingMovies.vue";
 import ContinueWatchingSection from "@/components/ContinueWatchingSection.vue";
+import DateNightResume from "@/components/DateNightResume.vue";
 
 export default {
   components: {
@@ -89,6 +91,7 @@ export default {
     TvCard,
     UpcomingMovies,
     ContinueWatchingSection,
+    DateNightResume,
   },
   data: function () {
     return {

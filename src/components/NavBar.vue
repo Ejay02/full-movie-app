@@ -9,6 +9,18 @@
       <!-- <v-btn text class="ml-2">Contact</v-btn> -->
       <v-spacer></v-spacer>
 
+      <v-menu offset-y content-class="mobile-navigation-menu" max-height="80vh">
+        <template #activator="{ on, attrs }">
+          <v-btn class="mobile-navigation-toggle" icon aria-label="Open navigation" v-bind="attrs" v-on="on"><v-icon>mdi-menu</v-icon></v-btn>
+        </template>
+        <v-list dark aria-label="Main navigation">
+          <v-list-item v-for="item in mobileLinks" :key="item.to" :to="item.to" exact>
+            <v-list-item-icon><v-icon>{{ item.icon }}</v-icon></v-list-item-icon>
+            <v-list-item-title>{{ item.label }}</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+
       <!-- search -->
       <v-text-field
         v-model="searchQuery"
@@ -229,6 +241,16 @@ export default {
   data() {
     return {
       searchQuery: this.$route.query.q || "",
+      mobileLinks: [
+        { to: '/', label: 'Home', icon: 'mdi-home-outline' },
+        { to: '/movies', label: 'Movies', icon: 'mdi-movie-outline' },
+        { to: '/shows', label: 'TV Shows', icon: 'mdi-television' },
+        { to: '/search', label: 'Search', icon: 'mdi-magnify' },
+        { to: '/my-view', label: 'My View', icon: 'mdi-view-grid-outline' },
+        { to: '/our-view', label: 'Our View', icon: 'mdi-account-group' },
+        { to: '/our-view?tab=games', label: 'Games', icon: 'mdi-gamepad-variant' },
+        { to: '/dstv', label: 'DStv', icon: 'mdi-television-play' },
+      ],
       currentUser: localStorage.getItem("our_view_user") || "Timi",
       timiIcon: localStorage.getItem("timi_user_icon") || "mdi-crown",
       ejayIcon: localStorage.getItem("ejay_user_icon") || "mdi-lightning-bolt",
@@ -428,6 +450,18 @@ export default {
   cursor: pointer;
 }
 
+.mobile-navigation-toggle { display: none !important; }
+.mobile-navigation-menu { min-width: 220px; }
+@media (max-width: 1100px) {
+  .mobile-navigation-toggle { display: inline-flex !important; }
+  .glass-nav .nav-links { display: none !important; }
+}
+@media (max-width: 600px) {
+  .glass-nav .search-bar { display: none !important; }
+  .glass-nav .v-toolbar__content { padding: 0 8px !important; }
+  .glass-nav.px-4 { padding: 0 !important; }
+  .glass-nav .brand-btn { padding: 0 8px; margin-left: 0 !important; font-size: .95rem !important; }
+}
 @media (max-width: 760px) {
   .glass-nav {
     margin: 8px;

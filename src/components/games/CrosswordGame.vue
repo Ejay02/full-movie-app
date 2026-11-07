@@ -3,6 +3,7 @@
     <header class="crossword-heading">
       <div><span class="crossword-eyebrow">PICTURE & WORD DUEL</span><h3>Crossword Go</h3></div>
       <span v-if="puzzle" class="puzzle-name">{{ puzzle.title }}</span>
+      <v-btn small text color="cyan" @click="showPuzzlePicker = true">Choose puzzle</v-btn>
     </header>
     <p class="crossword-intro">Place your letters, then Go. Correct: +1. Completed word: +5. Wrong: −1 and the tile returns to your rack for another try.</p>
     <v-alert v-if="gameError" dense outlined type="warning">{{ gameError }}</v-alert>
@@ -14,7 +15,7 @@
         </div>
       </div>
       <v-btn v-if="puzzle.cols === 8" small outlined color="cyan" class="mb-3" @click="startLargerPuzzle">Start a larger crossword</v-btn>
-      <p class="board-scroll-hint">Swipe the board sideways on a small screen. Tap a clue to read it below.</p>
+      <p class="board-scroll-hint">{{ puzzle.difficulty || 'Classic' }} · {{ puzzle.words.length }} clues. Swipe sideways to explore. Tap a clue to read it below.</p>
       <div class="picture-board-scroll" tabindex="0" aria-label="Scrollable crossword board">
       <div class="picture-board" :style="{ gridTemplateColumns: `repeat(${puzzle.cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${puzzle.rows}, minmax(0, 1fr))`, aspectRatio: `${puzzle.cols} / ${puzzle.rows}` }" aria-label="Picture crossword board">
         <template v-for="cell in puzzle.cells">
@@ -55,6 +56,12 @@
         <p v-if="feedback" class="crossword-feedback" role="status">{{ feedback }}</p>
       </div>
     </template>
+    <v-dialog v-model="showPuzzlePicker" max-width="440" scrollable>
+      <v-card dark><v-card-title>Choose your crossword</v-card-title><v-card-text>
+        <p>Starting a new board replaces this room’s current crossword for both players.</p>
+        <v-select v-model="chosenPuzzle" :items="puzzleChoices" label="Picture crossword" outlined hide-details />
+      </v-card-text><v-card-actions><v-btn text @click="showPuzzlePicker = false">Keep current board</v-btn><v-spacer /><v-btn text color="cyan" :disabled="gameLoading || gameSaving" @click="startChosenPuzzle">Start new board</v-btn></v-card-actions></v-card>
+    </v-dialog>
   </section>
 </template>
 
@@ -66,9 +73,10 @@ export default {
   name: 'CrosswordGame',
   mixins: [gameSession('crosswordGo', 'crosswordState', () => newPictureCrossword())],
   props: { currentUser: { type: String, default: 'Timi' }, roomId: { type: String, default: 'date-night' } },
-  data: () => ({ crosswordState: null, selectedWordId: null, selectedTile: null, selectedCell: null, pending: [], feedback: '' }),
+  data: () => ({ crosswordState: null, selectedWordId: null, selectedTile: null, selectedCell: null, pending: [], feedback: '', showPuzzlePicker: false, chosenPuzzle: 0 }),
   computed: {
     puzzle() { return picturePuzzle(this.crosswordState); },
+    puzzleChoices() { return PICTURE_CROSSWORDS.map((puzzle, value) => ({ text: `${puzzle.title} · ${puzzle.difficulty || 'Classic'} · ${puzzle.words.length} clues`, value })).filter((_, index) => !!PICTURE_CROSSWORDS[index].difficulty); },
     selectedWord() { return this.puzzle?.words.find(word => word.id === this.selectedWordId); },
     finished() { return this.crosswordState?.status === 'game_over'; },
     canPlay() { return !this.gameLoading && !this.gameSaving && !this.finished && this.crosswordState?.currentTurn === this.currentUser; },
@@ -126,8 +134,9 @@ export default {
     nextPuzzle() {
       if (!this.finished) return;
       const index = PICTURE_CROSSWORDS.findIndex(puzzle => puzzle.id === this.crosswordState.puzzleId);
-      this.saveGameSession(newPictureCrossword((index + 1) % 2, this.currentUser));
+      this.saveGameSession(newPictureCrossword((index + 1) % this.puzzleChoices.length, this.currentUser));
     },
+    async startChosenPuzzle() { if (await this.saveGameSession(newPictureCrossword(this.chosenPuzzle, this.currentUser))) this.showPuzzlePicker = false; },
     startLargerPuzzle() { if (!this.gameSaving && !this.gameLoading) this.saveGameSession(newPictureCrossword(0, this.currentUser)); },
   },
 };
@@ -138,7 +147,7 @@ export default {
 .picture-board-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: 8px; }
 .picture-board-scroll .picture-board { min-width: 650px; }
 .board-scroll-hint { color: #aebbd0; font-size: 11px; }
-.crossword-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.crossword-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
 .crossword-heading h3 { font-size: 26px; font-weight: 800; letter-spacing: -1px; }
 .crossword-eyebrow { color: #61e1dd; font-size: 10px; letter-spacing: 2px; font-weight: 800; }
 .puzzle-name { color: #b4bbd5; font-size: 12px; }
