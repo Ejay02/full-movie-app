@@ -332,9 +332,41 @@ async function main() {
     assert.equal(games.readGame('whot', 'after'), null);
     assert.equal(games.readGame('whot', 'before').timiHand[0].number, 5);
   });
-  await test('Together Player has no iframe fallback and private embeds remain sandboxed', () => {
-    const shared = fs.readFileSync(path.join(root, 'src/components/WatchTogetherPlayer.vue'), 'utf8');
-    assert.doesNotMatch(shared, /<iframe\b/i);
+  await test('Provider playback follows room commands without reloading on heartbeats', async () => {
+    const writes = [];
+    const player = load('src/components/WatchTogetherPlayer.vue', {
+      '@/services/firebaseSync': { setPlayback: async state => { writes.push(state); } },
+      '@/data/personalMediaLibrary': { getPersonalMediaSource: () => null },
+    }).default;
+    const roomPlayer = () => {
+      const component = { ...player.data(), media: { mediaType: 'movie', mediaId: 361743 }, connected: true, providerDenied: true };
+      for (const [name, method] of Object.entries(player.methods)) component[name] = method.bind(component);
+      for (const [name, getter] of Object.entries(player.computed)) Object.defineProperty(component, name, { get: getter.bind(component) });
+      return component;
+    };
+    const first = roomPlayer(), second = roomPlayer();
+    const receive = async () => { second.shared = writes.at(-1); await second.restorePlayback(); };
+    await first.seekTogether(20);
+    await receive();
+    assert.equal(second.embedSrc, '', 'seeking while paused keeps the player stopped');
+    await first.togglePlayback();
+    await receive();
+    const started = new URL(second.embedSrc);
+    assert.equal(started.origin, 'https://vixsrc.to');
+    assert.equal(started.pathname, '/movie/361743');
+    assert.equal(started.searchParams.get('startAt'), '20');
+    const revision = second.embedRevision;
+    await first.send(22, true, false);
+    await receive();
+    assert.equal(second.embedRevision, revision, 'progress updates do not reload the provider');
+    await first.seekTogether(10);
+    await receive();
+    assert.equal(new URL(second.embedSrc).searchParams.get('startAt'), '32');
+    await first.togglePlayback();
+    await receive();
+    assert.equal(second.embedSrc, '', 'the other viewer stops on pause');
+  });
+  await test('Private solo embeds remain sandboxed', () => {
     const solo = fs.readFileSync(path.join(root, 'src/views/WatchView.vue'), 'utf8');
     const sandbox = solo.match(/sandbox="([^"]+)"/)[1];
     assert.ok(sandbox.includes('allow-scripts'));

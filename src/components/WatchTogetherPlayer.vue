@@ -12,7 +12,7 @@
         <v-btn v-if="providerDenied && providerUrl" small text class="text-none" :href="providerUrl" target="_blank" rel="noopener noreferrer">Watch separately</v-btn>
       </div>
     </v-alert>
-    <div v-if="loadingSource || nativeSource" class="video-stage">
+    <div v-if="loadingSource || nativeSource || embeddedPlayback" class="video-stage">
       <div v-if="loadingSource" class="source-loading" role="status">Finding your stream…</div>
       <video v-if="nativeSource" ref="video" controls playsinline preload="metadata"
         @pointerdown="markLocalControl" @keydown="markLocalControl"
@@ -23,18 +23,32 @@
         <track v-for="track in nativeSource.subtitleTracks || []" :key="track.src" kind="subtitles"
           :src="track.src" :srclang="track.srclang" :label="track.label" :default="!!track.default" />
       </video>
+      <iframe v-else-if="embedSrc" :key="embedRevision" :src="embedSrc"
+        :title="`${media.title || 'Movie'} provider player`" allow="autoplay; encrypted-media; fullscreen"
+        allowfullscreen referrerpolicy="origin"></iframe>
+      <div v-else-if="embeddedPlayback" class="source-loading">
+        Ready at {{ formatTime(sharedPosition) }}
+      </div>
       <v-btn v-if="needsGesture && shared && shared.playing && nativeSource" class="join-playback" color="cyan" dark @click="restorePlayback">Tap to join playback</v-btn>
     </div>
     <div v-if="nativeSource || !error" class="pa-3 d-flex flex-wrap align-center gap-2">
-      <v-btn v-if="nativeSource" small color="cyan" class="black--text text-none" :disabled="!connected" @click="togglePlayback">{{ shared && shared.playing ? 'Pause together' : 'Play together' }}</v-btn>
-      <v-btn v-if="nativeSource" small outlined color="cyan" class="text-none" :disabled="!shared || !connected" @click="syncNow">
+      <v-btn v-if="nativeSource || embeddedPlayback" small color="cyan" class="black--text text-none" :disabled="!connected || !playbackLoaded" @click="togglePlayback">{{ shared && shared.playing ? 'Pause together' : 'Play together' }}</v-btn>
+      <v-btn v-if="nativeSource || embeddedPlayback" small outlined color="cyan" class="text-none" :disabled="!shared || !connected" @click="syncNow">
         Sync to shared position
       </v-btn>
+      <template v-if="embeddedPlayback">
+        <v-btn small text aria-label="Skip back 10 seconds together" :disabled="!connected || !playbackLoaded" @click="seekTogether(-10)">−10s</v-btn>
+        <v-btn small text aria-label="Skip forward 10 seconds together" :disabled="!connected || !playbackLoaded" @click="seekTogether(10)">+10s</v-btn>
+      </template>
       <span v-if="shared" class="caption grey--text">{{ shared.sender }} · {{ shared.playing ? 'Playing' : 'Paused' }} at {{ formatTime(sharedPosition) }}</span>
       <label v-if="qualityLevels.length" class="quality-choice">Quality
         <select v-model.number="quality" aria-label="Video quality" @change="setQuality"><option :value="-1">Auto</option><option v-for="level in qualityLevels" :key="level.index" :value="level.index">{{ level.label }}</option></select>
       </label>
       <v-btn v-if="!error" small text color="cyan" class="text-none" @click="$emit('choose-source')">Use a direct video</v-btn>
+      <p v-if="embeddedPlayback" class="caption grey--text mb-0 provider-note">
+        Use the room controls above to stay together. Resuming or skipping reloads the provider player.
+        If playback waits for a tap, press play inside the video.
+      </p>
     </div>
   </div>
 </template>
@@ -48,6 +62,7 @@ import { providerWatchUrl } from "@/services/providerPlayback";
 export default {
   props: { media: Object, roomId: String, currentUser: String },
   data: () => ({ connected: false, offset: 0, shared: null, error: "", needsGesture: false, providerDenied: false,
+    embedSrc: '', embedRevision: 0, appliedEmbedCommand: null, controlSequence: 0,
     buffering: false, recoveryAttempts: 0, recoveryTimer: null, quality: -1, qualityLevels: [],
     resolvedSource: null, loadingSource: false, sourceReady: false, playbackLoaded: false, sourceRequest: null, sourceGeneration: 0, hls: null, closing: false,
     clientId: `${Date.now()}-${Math.random().toString(36).slice(2)}`, applyingUntil: 0, localControlUntil: 0,
@@ -60,11 +75,13 @@ export default {
     },
     nativeSource() { return this.directSource || this.resolvedSource; },
     providerUrl() { return providerWatchUrl(this.media.mediaType, this.media.mediaId, this.media.season || 1, this.media.episode || 1); },
+    embeddedPlayback() { return this.providerDenied && !!this.providerUrl && !this.nativeSource; },
     key() { return mediaKey(this.media, 'native'); },
     sharedPosition() { return playbackPosition(this.shared, this.tick + this.offset); },
     statusText() {
       if (this.loadingSource) return 'Loading the shared player';
       if (this.error) return 'Playback needs attention';
+      if (this.embeddedPlayback) return this.shared?.playing ? 'Room playback started' : 'Ready to play together';
       if (this.buffering && this.shared?.playing) return 'Buffering on this device…';
       if (!this.nativeSource) return 'Stream unavailable';
       if (this.needsGesture && this.shared?.playing) return "Tap to allow playback on this device";
@@ -80,7 +97,7 @@ export default {
       this.playbackLoaded = true;
       if (!state || state.mediaKey !== this.key || !Number.isFinite(state.position) || !Number.isFinite(state.updatedAt)) return;
       this.shared = state;
-      if (state.clientId !== this.clientId && this.nativeSource) this.restorePlayback();
+      if (state.clientId !== this.clientId) this.restorePlayback();
     }, this.roomId, (error) => { this.error = `Playback sync unavailable: ${error.message}`; }));
     this.timer = setInterval(() => { this.tick = Date.now(); }, 1000);
   },
@@ -112,6 +129,8 @@ export default {
       if (this.sourceRequest) this.sourceRequest.abort();
       this.error = '';
       this.providerDenied = false;
+      this.embedSrc = '';
+      this.appliedEmbedCommand = null;
       if (this.hls) { this.hls.destroy(); this.hls = null; }
       this.resolvedSource = null;
       if (!this.directSource) {
@@ -123,8 +142,13 @@ export default {
             season: this.media.season || 1, episode: this.media.episode || 1 });
           const response = await fetch(`/api/stream?${query}`, { signal: controller.signal });
           const source = await response.json();
+          if (controller.signal.aborted) return;
           if (!response.ok) {
             this.providerDenied = source.code === 'provider_denied';
+            if (this.embeddedPlayback) {
+              this.syncEmbeddedPlayback();
+              return;
+            }
             throw new Error(source.message || 'Stream unavailable.');
           }
           if (!controller.signal.aborted) this.resolvedSource = source;
@@ -167,6 +191,10 @@ export default {
       player.attachMedia(video);
     },
     async togglePlayback() {
+      if (this.embeddedPlayback) {
+        await this.send(this.currentSharedPosition(), !this.shared?.playing);
+        return;
+      }
       const video = this.$refs.video;
       if (!video || !video.readyState || !this.playbackLoaded || !this.sourceReady) { this.error = 'The video is still loading. Try play again in a moment.'; return; }
       const playing = !this.shared?.playing;
@@ -184,6 +212,10 @@ export default {
       this.restorePlayback();
     },
     async restorePlayback() {
+      if (this.embeddedPlayback) {
+        this.syncEmbeddedPlayback();
+        return;
+      }
       const video = this.$refs.video;
       if (!video || !video.readyState || !this.shared) return;
       this.applyingUntil = Date.now() + 1500;
@@ -195,17 +227,42 @@ export default {
         catch (_) { if (this.shared === command && command.playing) this.needsGesture = true; }
       } else { video.pause(); this.needsGesture = false; }
     },
-    async send(position, playing) {
+    currentSharedPosition() {
+      return playbackPosition(this.shared, Date.now() + this.offset);
+    },
+    seekTogether(seconds) {
+      return this.send(Math.max(0, this.currentSharedPosition() + seconds), !!this.shared?.playing);
+    },
+    syncEmbeddedPlayback(force = false) {
+      if (!this.shared?.playing) {
+        this.embedSrc = '';
+        this.appliedEmbedCommand = null;
+        return;
+      }
+      // Provider frames cannot be controlled directly. Start or reopen at the
+      // room position on commands, but never reload on periodic progress updates.
+      const command = this.shared.controlId || this.shared.watchRequestId || '';
+      if (!force && this.embedSrc && this.appliedEmbedCommand === command) return;
+      const url = new URL(this.providerUrl);
+      url.searchParams.set('autoplay', 'true');
+      url.searchParams.set('startAt', Math.floor(this.currentSharedPosition()));
+      this.appliedEmbedCommand = command;
+      this.embedSrc = url.href;
+      this.embedRevision++;
+    },
+    async send(position, playing, control = true) {
       if (!this.connected) { this.error = "Room offline. Reconnect before sharing playback controls."; return; }
       const state = { mediaKey: this.key, position, playing, sender: this.currentUser,
         clientId: this.clientId, updatedAt: Date.now() + this.offset,
+        controlId: control ? `${this.clientId}:${++this.controlSequence}` : (this.shared?.controlId || ''),
         watchRequestId: playing && !this.shared?.playing ? `${this.clientId}:${Date.now()}` : (this.shared?.watchRequestId || '') };
       this.shared = state;
+      if (this.embeddedPlayback) this.syncEmbeddedPlayback();
       this.lastSent = Date.now();
       try { await firebaseSync.setPlayback(state, this.roomId); this.error = ""; }
       catch (error) { this.error = `Could not share playback: ${error.message}`; }
     },
-    publish() {
+    publish(event) {
       const video = this.$refs.video;
       if (!video || !video.readyState || this.closing || this.loadingSource || !this.sourceReady || !this.playbackLoaded) return;
       // Ignore the echo of a remote command, but keep an immediate user override.
@@ -214,14 +271,15 @@ export default {
       if (this.shared && playing !== this.shared.playing && !video.ended && Date.now() > this.localControlUntil) return;
       if (Date.now() < this.applyingUntil && this.shared && playing === this.shared.playing &&
           Math.abs(video.currentTime - playbackPosition(this.shared, Date.now() + this.offset, video.duration)) < 1.5) return;
-      this.send(video.currentTime, playing);
+      this.send(video.currentTime, playing, event !== 'timeupdate');
     },
     heartbeat() {
-      if (this.shared?.clientId === this.clientId && Date.now() - this.lastSent > 5000) this.publish();
+      if (this.shared?.clientId === this.clientId && Date.now() - this.lastSent > 5000) this.publish('timeupdate');
     },
     syncNow() {
       if (!this.shared) { this.error = "No shared playback position yet. Start the video first."; return; }
-      this.restorePlayback();
+      if (this.embeddedPlayback) this.syncEmbeddedPlayback(true);
+      else this.restorePlayback();
     },
   },
 };
@@ -231,9 +289,10 @@ export default {
 .together-player { background: #05070d; }
 .video-stage { position: relative; aspect-ratio: 16 / 9; background: #000; }
 .source-loading { position: absolute; inset: 0; display: grid; place-items: center; color: #b3d5df; }
-video { width: 100%; height: 100%; display: block; }
+video, iframe { width: 100%; height: 100%; display: block; border: 0; }
 .join-playback { position: absolute; top: 45%; left: 50%; transform: translateX(-50%); }
 .gap-2 { gap: 8px; }
+.provider-note { flex-basis: 100%; }
 .quality-choice { color: #bdcbd5; font-size: 12px; margin-left: auto; }
 .quality-choice select { background: #172231; color: #fff; padding: 8px; margin-left: 6px; border-radius: 6px; }
 </style>
