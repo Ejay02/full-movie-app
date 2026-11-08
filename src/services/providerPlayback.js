@@ -6,3 +6,11 @@ export function providerWatchUrl(type, id, season = 1, episode = 1) {
   }
   return '';
 }
+
+export function providerRoomUrl(type, id, season, episode) {
+  const watchUrl = providerWatchUrl(type, id, season, episode);
+  if (!watchUrl) return '';
+  const url = new URL(new URL(watchUrl).pathname, 'https://vidlink.pro');
+  url.searchParams.set('player', 'jw');
+  return url.href;
+}

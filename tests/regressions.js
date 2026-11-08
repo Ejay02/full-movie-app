@@ -352,8 +352,9 @@ async function main() {
     await first.togglePlayback();
     await receive();
     const started = new URL(second.embedSrc);
-    assert.equal(started.origin, 'https://vixsrc.to');
+    assert.equal(started.origin, 'https://vidlink.pro');
     assert.equal(started.pathname, '/movie/361743');
+    assert.equal(started.searchParams.get('player'), 'jw');
     assert.equal(started.searchParams.get('startAt'), '20');
     const revision = second.embedRevision;
     await first.send(22, true, false);

@@ -57,7 +57,7 @@
 import firebaseSync from "@/services/firebaseSync";
 import { getPersonalMediaSource } from "@/data/personalMediaLibrary";
 import { mediaKey, playbackPosition } from "@/services/playbackSync";
-import { providerWatchUrl } from "@/services/providerPlayback";
+import { providerRoomUrl, providerWatchUrl } from "@/services/providerPlayback";
 
 export default {
   props: { media: Object, roomId: String, currentUser: String },
@@ -75,7 +75,8 @@ export default {
     },
     nativeSource() { return this.directSource || this.resolvedSource; },
     providerUrl() { return providerWatchUrl(this.media.mediaType, this.media.mediaId, this.media.season || 1, this.media.episode || 1); },
-    embeddedPlayback() { return this.providerDenied && !!this.providerUrl && !this.nativeSource; },
+    roomProviderUrl() { return providerRoomUrl(this.media.mediaType, this.media.mediaId, this.media.season || 1, this.media.episode || 1); },
+    embeddedPlayback() { return this.providerDenied && !!this.roomProviderUrl && !this.nativeSource; },
     key() { return mediaKey(this.media, 'native'); },
     sharedPosition() { return playbackPosition(this.shared, this.tick + this.offset); },
     statusText() {
@@ -243,7 +244,7 @@ export default {
       // room position on commands, but never reload on periodic progress updates.
       const command = this.shared.controlId || this.shared.watchRequestId || '';
       if (!force && this.embedSrc && this.appliedEmbedCommand === command) return;
-      const url = new URL(this.providerUrl);
+      const url = new URL(this.roomProviderUrl);
       url.searchParams.set('autoplay', 'true');
       url.searchParams.set('startAt', Math.floor(this.currentSharedPosition()));
       this.appliedEmbedCommand = command;
