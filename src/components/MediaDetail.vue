@@ -94,6 +94,7 @@
               <!-- Actions -->
               <div class="hero-actions d-flex align-center flex-wrap gap-3">
                 <v-btn
+                  v-if="!digitalRelease"
                   color="error"
                   large
                   rounded
@@ -103,6 +104,7 @@
                   <v-icon left>mdi-play</v-icon>
                   Watch Now
                 </v-btn>
+                <span v-else class="digital-release-label">Digital release {{ digitalRelease }}</span>
 
                 <v-btn
                   :color="isInMyView ? 'success' : 'white'"
@@ -299,6 +301,7 @@
 <script>
 import Images from "../components/Images.vue";
 import { getPersonalMediaSource } from "@/data/personalMediaLibrary";
+import { upcomingDigitalRelease } from "@/services/digitalRelease";
 
 function createInitialMedia() {
   return {
@@ -368,6 +371,9 @@ export default {
     },
     hasPersonalSource() {
       return !!this.mediaSource;
+    },
+    digitalRelease() {
+      return this.hasPersonalSource ? '' : upcomingDigitalRelease(this.mediaType, this.mediaId);
     },
     continueWatchingEntry() {
       return this.$store.getters.continueWatchingItemByKey(
@@ -503,6 +509,7 @@ export default {
       }).catch(() => {});
     },
     startWatching() {
+      if (this.digitalRelease) return;
       // Navigate to full-screen watch view
       const watchPath = `/watch/${this.mediaType}/${this.mediaId}`;
       const query = { autoplay: "1" };
@@ -602,6 +609,13 @@ export default {
 </script>
 
 <style>
+.digital-release-label {
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
 .loading-container {
   min-height: 400px;
 }

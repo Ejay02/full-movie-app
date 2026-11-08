@@ -30,9 +30,9 @@
         <h2 class="section-title mb-2">Curated for You 🖤</h2>
       </div>
     </div>
-    <v-slide-group v-if="curatedMovies && curatedMovies.length" class="content-slider pa-0 mb-8" show-arrows>
+    <v-slide-group v-if="curatedMovies && curatedMovies.length" class="content-slider pa-0 mb-6" show-arrows="desktop">
       <v-slide-item v-for="movie in curatedMovies" :key="'curated-' + movie.id">
-        <div class="carousel-card mr-4 my-2">
+        <div class="home-carousel-card my-2">
           <MovieCard :movie="movie" :genres="genres" />
         </div>
       </v-slide-item>
@@ -48,9 +48,9 @@
     <v-alert v-if="!popularMovies || !popularMovies.length" outlined type="info" class="mt-6">
       No popular movies are available right now.
     </v-alert>
-    <v-slide-group v-else class="content-slider pa-0 mb-8" show-arrows>
+    <v-slide-group v-else class="content-slider pa-0 mb-6" show-arrows="desktop">
       <v-slide-item v-for="movie in popularMovies" :key="movie.id">
-        <div class="carousel-card mr-4 my-2">
+        <div class="home-carousel-card my-2">
           <MovieCard :movie="movie" :genres="genres" />
         </div>
       </v-slide-item>
@@ -66,9 +66,9 @@
     <v-alert v-if="!popularShows || !popularShows.length" outlined type="info" class="mt-6">
       No popular shows are available right now.
     </v-alert>
-    <v-slide-group v-else class="content-slider pa-0 mb-8" show-arrows>
+    <v-slide-group v-else class="content-slider pa-0 mb-6" show-arrows="desktop">
       <v-slide-item v-for="show in popularShows" :key="show.id">
-        <div class="carousel-card mr-4 my-2">
+        <div class="home-carousel-card my-2">
           <TvCard :show="show" :genres="genres" />
         </div>
       </v-slide-item>
@@ -168,6 +168,8 @@ export default {
 }
 
 .home-page {
+  --home-card-width: 166px;
+  --home-card-gap: 12px;
   padding-top: 12px;
 }
 
@@ -195,8 +197,50 @@ export default {
   position: relative;
 }
 
-.carousel-card {
-  width: 200px;
+.home-carousel-card {
+  width: var(--home-card-width);
+  margin-inline-end: var(--home-card-gap);
+}
+
+.home-carousel-card .v-card__title.card-title {
+  min-height: 0;
+  height: 56px;
+  padding: 9px 8px 6px 10px !important;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+.home-carousel-card .title-text {
+  font-size: 0.85rem;
+  line-height: 1.25;
+  max-height: 2.5em;
+  overflow-wrap: anywhere;
+}
+
+.home-carousel-card .watchlist-btn {
+  width: 32px;
+  height: 32px;
+  margin-top: -3px;
+}
+
+.home-carousel-card .content-area {
+  padding: 0 10px 10px;
+}
+
+.home-carousel-card .ratings-row {
+  margin-bottom: 5px;
+}
+
+.home-carousel-card .genre-area {
+  font-size: 0.72rem !important;
+  height: 1.4em;
+  -webkit-line-clamp: 1;
+}
+
+.home-page .v-slide-group__prev,
+.home-page .v-slide-group__next {
+  flex-basis: 28px;
+  min-width: 28px;
 }
 
 .gap-3 {
@@ -208,8 +252,9 @@ export default {
     font-size: 1.45rem;
   }
 
-  .carousel-card {
-    width: 150px;
+  .home-page {
+    --home-card-width: 138px;
+    --home-card-gap: 10px;
   }
 }
 </style>

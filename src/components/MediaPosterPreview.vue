@@ -1,5 +1,5 @@
 <template>
-  <router-link :to="to" class="poster-link">
+  <router-link :to="to" :aria-label="label || undefined" class="poster-link">
     <div class="poster-frame">
       <v-img :src="posterSrc" alt="" :class="imageClass"></v-img>
 
@@ -9,8 +9,7 @@
         <span class="watched-text ml-1">Watched</span>
       </span>
 
-      <!-- Quality Badge tag on top right -->
-      <span v-if="quality" class="quality-badge">{{ quality }}</span>
+      <span v-if="badge" class="release-badge">{{ badge }}</span>
 
       <div v-if="hover" class="preview-layer">
         <iframe
@@ -67,7 +66,11 @@ export default {
       type: String,
       default: "",
     },
-    quality: {
+    badge: {
+      type: String,
+      default: "",
+    },
+    label: {
       type: String,
       default: "",
     },
@@ -175,12 +178,12 @@ export default {
   backdrop-filter: blur(8px);
 }
 
-.quality-badge {
+.release-badge {
   position: absolute;
   top: 8px;
   right: 8px;
   z-index: 5;
-  background: linear-gradient(135deg, #ff5252, #ff1744);
+  background: rgba(12, 16, 26, 0.92);
   color: #ffffff;
   font-size: 0.7rem;
   font-weight: 700;

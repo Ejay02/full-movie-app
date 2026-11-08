@@ -196,6 +196,34 @@ async function main() {
     view.methods.handleLoadedMetadata.call(component);
     assert.equal(player.currentTime, 0, 'a new episode must start at zero');
   });
+  await test('Known digital release dates keep unavailable movies out of the player until release day', async () => {
+    const { upcomingDigitalRelease } = load('src/services/digitalRelease.js');
+    const before = new Date(2026, 10, 16);
+    assert.equal(upcomingDigitalRelease('movie', '1368337', before), 'Nov 17');
+    assert.equal(upcomingDigitalRelease('movie', 1368337, new Date(2026, 10, 17)), '');
+    assert.equal(upcomingDigitalRelease('movie', 361743, before), '');
+    assert.equal(upcomingDigitalRelease('tv', 1368337, before), '');
+
+    const availability = { upcomingDigitalRelease: (type, id) => upcomingDigitalRelease(type, id, before) };
+    const view = load('src/views/WatchView.vue', {
+      '@/data/personalMediaLibrary': { getPersonalMediaSource: () => null },
+      '@/services/digitalRelease': availability,
+    }).default;
+    const component = { ...view.data(), mediaType: 'movie', mediaId: '1368337', hasPersonalSource: false };
+    for (const [name, method] of Object.entries(view.methods)) component[name] = method.bind(component);
+    component.$http = { get() { assert.fail('Must not load a player for an unavailable movie'); } };
+    component.preparePlayback = () => assert.fail('Must not open the provider');
+    await component.loadPlayDetails();
+    assert.match(component.errorMessage, /Digital release Nov 17/);
+    assert.equal(component.loading, false);
+
+    const shelf = load('src/components/ContinueWatchingSection.vue', { '@/services/digitalRelease': availability }).default;
+    const [card] = shelf.computed.items.call({ $store: { getters: {
+      continueWatchingItems: [{ mediaType: 'movie', mediaId: '1368337', currentTime: 0 }],
+    } } });
+    assert.equal(shelf.methods.actionLabel(card), 'Details');
+    assert.equal(shelf.methods.resumeRoute(card).path, '/movie/1368337');
+  });
   await test('Solo playback falls back in app after provider denial and preserves resume', async () => {
     let touchLayout = true;
     const view = load('src/views/WatchView.vue', { '@/data/personalMediaLibrary': { getPersonalMediaSource: () => null } }, {

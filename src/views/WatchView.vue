@@ -298,6 +298,7 @@
 <script>
 import { getPersonalMediaSource } from "@/data/personalMediaLibrary";
 import { providerRoomUrl } from "@/services/providerPlayback";
+import { upcomingDigitalRelease } from "@/services/digitalRelease";
 
 function createInitialMedia() {
   return {
@@ -642,6 +643,13 @@ export default {
         ? "personal"
         : "native";
 
+      const digitalRelease = this.hasPersonalSource ? '' : upcomingDigitalRelease(this.mediaType, this.mediaId);
+      if (digitalRelease) {
+        this.errorMessage = `Digital release ${digitalRelease}. This movie isn’t available to play here yet.`;
+        this.loading = false;
+        return;
+      }
+
       try {
         const response = await this.$http.get(`/${this.mediaType}/${this.mediaId}`);
         this.media = response.data;
@@ -667,9 +675,7 @@ export default {
           await this.fetchEpisodes();
         }
 
-        // Initialize watching record and buffering trigger
-        this.recordContinueWatching({ force: true });
-        this.startBufferingCheck();
+        if (this.activeIframeUrl) this.recordContinueWatching({ force: true });
       } catch (error) {
         this.errorMessage = "Unable to start stream at this moment.";
         console.error("Watch loading failed:", error);
@@ -701,7 +707,7 @@ export default {
       this.autoplayCancelled = false;
       this.showNextEpisodeCountdown = false;
       this.clearCountdown();
-      this.recordContinueWatching({ force: true });
+      if (this.activeIframeUrl) this.recordContinueWatching({ force: true });
       this.startBufferingCheck();
       this.updateUrlParams();
       this.preparePlayback();

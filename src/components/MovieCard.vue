@@ -12,7 +12,8 @@
         :poster-src="posterPath"
         :to="`/movie/${movie.id}`"
         image-class="poster-image"
-        :quality="qualityTag"
+        :badge="digitalRelease ? `Digital ${digitalRelease}` : ''"
+        :label="digitalRelease ? `${movie.title}, digital ${digitalRelease}` : movie.title"
       />
       <v-card-title class="subtitle-2 card-title pa-4">
         <div class="title-text">{{ movie.title }}</div>
@@ -93,6 +94,7 @@
 
 <script>
 import MediaPosterPreview from "./MediaPosterPreview.vue";
+import { upcomingDigitalRelease } from "@/services/digitalRelease";
 
 export default {
   components: {
@@ -116,24 +118,8 @@ export default {
     isInOurView() {
       return !!this.$store.getters.ourViewItemByKey("movie", this.movie.id);
     },
-    qualityTag() {
-      if (!this.movie.release_date) return "HD";
-      try {
-        const releaseDate = new Date(this.movie.release_date);
-        const today = new Date();
-        const diffTime = Math.abs(today - releaseDate);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays < 60) {
-          return "CAM";
-        } else if (diffDays < 120) {
-          return "HD";
-        } else {
-          return parseInt(this.movie.id) % 3 === 0 ? "4K" : "FHD";
-        }
-      } catch (e) {
-        return "FHD";
-      }
+    digitalRelease() {
+      return upcomingDigitalRelease('movie', this.movie.id);
     },
   },
   methods: {

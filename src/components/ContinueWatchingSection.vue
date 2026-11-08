@@ -16,19 +16,22 @@
       </v-btn>
     </div>
 
-    <v-slide-group class="continue-slider pa-0" show-arrows>
+    <v-slide-group class="continue-slider pa-0" show-arrows="desktop">
       <v-slide-item v-for="item in items" :key="item.id">
-        <v-card class="continue-card mr-4 my-2" flat>
-          <router-link :to="resumeRoute(item)" class="poster-link">
+        <v-card class="continue-card my-2" flat>
+          <router-link :to="resumeRoute(item)" class="poster-link" :aria-label="`${actionLabel(item)} ${item.title}`">
             <v-img :src="posterPath(item)" class="continue-poster">
-              <span class="quality-badge">{{ getQualityTag(item) }}</span>
-              <div class="poster-overlay">
-                <div class="play-chip">
-                  <v-icon left small color="white">mdi-play-circle</v-icon>
-                  <span>{{ item.playbackLabel }}</span>
-                </div>
-              </div>
+              <span v-if="item.digitalRelease" class="release-badge">Digital {{ item.digitalRelease }}</span>
             </v-img>
+            <v-progress-linear
+              v-if="item.progressPercent && !item.digitalRelease"
+              :value="item.progressPercent"
+              :aria-label="`${item.progressPercent}% watched`"
+              color="error"
+              background-color="grey darken-3"
+              height="3"
+              class="poster-progress"
+            />
           </router-link>
 
           <div class="continue-content">
@@ -37,13 +40,14 @@
                 <div class="media-label">
                   {{ item.mediaType === "tv" ? "Series" : "Movie" }}
                 </div>
-                <div class="card-title">{{ item.title }}</div>
+                <div class="continue-title" :title="item.title">{{ item.title }}</div>
               </div>
 
               <v-btn
                 icon
                 small
                 class="remove-btn"
+                :aria-label="`Remove ${item.title} from Continue Watching`"
                 @click.stop="removeItem(item.id)"
               >
                 <v-icon small color="grey lighten-1">mdi-close</v-icon>
@@ -60,24 +64,15 @@
               <span class="watched-at">{{ formatWatchedAt(item.watchedAt) }}</span>
             </div>
 
-            <div v-if="item.progressPercent" class="progress-row">
-              <v-progress-linear
-                :value="item.progressPercent"
-                color="error"
-                background-color="rgba(255, 255, 255, 0.12)"
-                rounded
-                height="6"
-              ></v-progress-linear>
-              <span class="progress-label">{{ item.progressPercent }}% watched</span>
-            </div>
-
             <v-btn
               :to="resumeRoute(item)"
-              color="error"
+              :color="item.digitalRelease ? 'white' : 'error'"
+              :outlined="!!item.digitalRelease"
               depressed
+              small
               class="resume-btn text-none"
             >
-              {{ item.currentTime > 0 ? 'Resume' : 'Watch' }}
+              {{ actionLabel(item) }}
             </v-btn>
           </div>
         </v-card>
@@ -87,6 +82,8 @@
 </template>
 
 <script>
+import { upcomingDigitalRelease } from "@/services/digitalRelease";
+
 export default {
   name: "ContinueWatchingSection",
   props: {
@@ -105,22 +102,24 @@ export default {
   },
   computed: {
     items() {
-      return this.$store.getters.continueWatchingItems;
+      return this.$store.getters.continueWatchingItems.map(item => ({
+        ...item, digitalRelease: upcomingDigitalRelease(item.mediaType, item.mediaId),
+      }));
     },
   },
   methods: {
     posterPath(item) {
-      if (item.posterPath) {
-        return `https://image.tmdb.org/t/p/w500/${item.posterPath}`;
-      }
-
       if (item.backdropPath) {
         return `https://image.tmdb.org/t/p/w780/${item.backdropPath}`;
+      }
+      if (item.posterPath) {
+        return `https://image.tmdb.org/t/p/w500/${item.posterPath}`;
       }
 
       return "";
     },
     resumeRoute(item) {
+      if (item.digitalRelease) return { path: `/movie/${item.mediaId}` };
       const basePath = `/watch/${item.mediaType}/${item.mediaId}`;
       const query = { autoplay: "1" };
       
@@ -140,11 +139,9 @@ export default {
     clearItems() {
       this.$store.dispatch("clearContinueWatching");
     },
-    getQualityTag(item) {
-      if (item.mediaType === "tv") {
-        return "FHD";
-      }
-      return parseInt(item.mediaId) % 3 === 0 ? "4K" : "FHD";
+    actionLabel(item) {
+      if (item.digitalRelease) return 'Details';
+      return item.currentTime > 0 ? 'Resume' : 'Watch';
     },
     formatWatchedAt(timestamp) {
       const elapsed = Date.now() - timestamp;
@@ -195,9 +192,10 @@ export default {
 }
 
 .continue-card {
-  width: 240px;
+  width: var(--home-card-width, 166px);
+  margin-inline-end: var(--home-card-gap, 12px);
   overflow: hidden;
-  border-radius: 16px !important;
+  border-radius: 12px !important;
   background: linear-gradient(180deg, rgba(17, 21, 33, 0.92), rgba(10, 12, 20, 0.96)) !important;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.25);
@@ -205,6 +203,7 @@ export default {
 
 .poster-link {
   display: block;
+  position: relative;
   text-decoration: none;
 }
 
@@ -212,33 +211,17 @@ export default {
   aspect-ratio: 16 / 9;
 }
 
-.poster-overlay {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-start;
-  width: 100%;
-  height: 100%;
-  padding: 14px;
-  background: linear-gradient(180deg, rgba(8, 10, 18, 0.05), rgba(8, 10, 18, 0.82));
+.poster-progress {
+  position: absolute;
+  bottom: 0;
 }
 
-.play-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-  font-size: 0.78rem;
-  backdrop-filter: blur(8px);
-}
-
-.quality-badge {
+.release-badge {
   position: absolute;
   top: 8px;
   right: 8px;
   z-index: 5;
-  background: linear-gradient(135deg, #ff5252, #ff1744);
+  background: rgba(12, 16, 26, 0.92);
   color: #ffffff;
   font-size: 0.7rem;
   font-weight: 700;
@@ -250,14 +233,14 @@ export default {
 }
 
 .continue-content {
-  padding: 14px;
+  padding: 10px;
 }
 
 .content-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 4px;
 }
 
 .content-titles {
@@ -273,9 +256,9 @@ export default {
   margin-bottom: 2px;
 }
 
-.card-title {
+.continue-title {
   color: rgba(255, 255, 255, 0.94);
-  font-size: 0.98rem;
+  font-size: 0.85rem;
   font-weight: 600;
   line-height: 1.35;
   height: 2.7em;
@@ -297,10 +280,10 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 4px;
+  margin-top: 7px;
   color: rgba(255, 255, 255, 0.62);
-  font-size: 0.82rem;
+  font-size: 0.73rem;
 }
 
 .imdb-badge {
@@ -318,20 +301,9 @@ export default {
 }
 
 .resume-btn {
-  margin-top: 14px;
+  margin-top: 10px;
   width: 100%;
-  border-radius: 10px !important;
-}
-
-.progress-row {
-  margin-top: 12px;
-}
-
-.progress-label {
-  display: inline-block;
-  margin-top: 8px;
-  color: rgba(255, 255, 255, 0.58);
-  font-size: 0.78rem;
+  border-radius: 7px !important;
 }
 
 .clear-btn {
@@ -343,8 +315,6 @@ export default {
     font-size: 1.45rem;
   }
 
-  .continue-card {
-    width: 210px;
-  }
+  .continue-card { width: var(--home-card-width, 138px); }
 }
 </style>
