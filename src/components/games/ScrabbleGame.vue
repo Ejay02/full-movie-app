@@ -12,7 +12,7 @@
       </div>
 
       <!-- Live Scores -->
-      <div class="d-flex align-center gap-2">
+      <div class="game-controls d-flex align-center flex-wrap gap-2">
         <v-chip small color="rgba(224, 64, 251, 0.2)" class="font-weight-black" style="color: #E040FB;">
           <v-icon x-small left color="#E040FB">mdi-crown</v-icon>
           Timi: {{ gameState ? gameState.timiScore : 0 }} pts
@@ -44,7 +44,7 @@
 
     <!-- Turn Banner & Helper Notice -->
     <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-3 px-1">
-      <div class="d-flex align-center gap-2">
+      <div class="game-controls d-flex align-center flex-wrap gap-2">
         <v-chip
           small
           :color="isCurrentTurn ? 'rgba(0, 230, 118, 0.25)' : 'rgba(255, 215, 0, 0.15)'"
@@ -73,9 +73,10 @@
       <div class="board-wrapper d-flex justify-center mb-4">
         <div class="scrabble-grid">
           <div v-for="(row, r) in 9" :key="r" class="scrabble-row d-flex">
-            <div
+            <button
               v-for="(col, c) in 9"
               :key="c"
+              type="button"
               class="scrabble-cell cursor-pointer d-flex flex-column align-center justify-center"
               :class="[
                 getCellClass(r, c),
@@ -84,10 +85,9 @@
                   'cell-target-glow': selectedRackTile && !getCellTile(r, c),
                 }
               ]"
-              @dragover.prevent="handleDragOver"
-              @dragenter.prevent="dragHoverCell = `${r}-${c}`"
-              @dragleave="handleDragLeave(r, c)"
-              @drop="handleDrop($event, r, c)"
+              :data-scrabble-cell="`${r}-${c}`"
+              :aria-label="cellLabel(r, c)"
+              :aria-disabled="!isCurrentTurn"
               @click="handleCellClick(r, c)"
             >
               <!-- Cell Multiplier Label (if no tile placed) -->
@@ -97,33 +97,33 @@
 
               <!-- Placed Tile -->
               <template v-else>
-                <div
+                <span
                   class="board-tile"
                   :class="{
                     'pending-tile': isTilePending(r, c),
                     'permanent-tile': !isTilePending(r, c),
                   }"
-                  title="Click to recall tile back to rack"
+                  :title="isTilePending(r, c) ? 'Recall tile' : undefined"
                 >
                   <span class="board-tile-letter">{{ getCellTile(r, c).letter }}</span>
                   <span class="board-tile-score">{{ getCellTile(r, c).score }}</span>
-                </div>
+                </span>
               </template>
-            </div>
+            </button>
           </div>
         </div>
       </div>
 
       <!-- Turn Action Controls & Pending Score Preview -->
       <div class="action-bar d-flex align-center justify-space-between flex-wrap gap-2 mb-3 px-2">
-        <div class="d-flex align-center gap-2">
+        <div class="game-controls d-flex align-center flex-wrap gap-2">
           <span class="caption grey--text">Bag: <strong>{{ (gameState.bag || []).length }}</strong> tiles</span>
           <span v-if="pendingPlacements.length" class="caption amber--text font-weight-black ml-2 word-preview-badge pa-1 px-2 rounded">
             Word: "{{ pendingWord }}" (Est. +{{ pendingScore }} pts)
           </span>
         </div>
 
-        <div class="d-flex align-center gap-2">
+        <div class="game-controls d-flex align-center flex-wrap gap-2">
           <v-btn
             small
             depressed
@@ -160,7 +160,7 @@
         </div>
       </div>
 
-      <!-- Player Rack (7 Wooden Tiles) with HTML5 Drag & Drop -->
+      <!-- Player Rack -->
       <div class="rack-container text-center pt-2">
         <div class="caption grey--text mb-2 font-weight-bold d-flex align-center justify-center gap-2">
           <span>Letter Rack for <strong>{{ activePlayer }}</strong>:</span>
@@ -169,23 +169,29 @@
           </v-chip>
         </div>
 
-        <div class="rack-shelf d-inline-flex align-center justify-center pa-2 rounded-xl">
-          <div
+        <div class="rack-shelf pa-2 rounded-xl">
+          <button
             v-for="(tile, idx) in currentRack"
             :key="tile.id || idx"
-            draggable="true"
-            class="rack-tile cursor-grab d-flex flex-column align-center justify-center mx-1"
+            type="button"
+            class="rack-tile cursor-grab d-flex flex-column align-center justify-center"
+            :aria-label="`${tile.letter}, ${tile.score} points`"
+            :aria-pressed="!!selectedRackTile && selectedRackTile.id === tile.id"
+            :disabled="!isCurrentTurn"
             :class="{
               'rack-tile-selected': selectedRackTile && selectedRackTile.id === tile.id,
-              'rack-tile-dragging': draggedTile && draggedTile.id === tile.id,
+              'rack-tile-dragging': tileDrag && tileDrag.moved && tileDrag.tile.id === tile.id,
             }"
-            @dragstart="handleDragStart($event, tile)"
-            @dragend="handleDragEnd"
-            @click="selectRackTile(tile)"
+            @pointerdown="startTileDrag($event, tile)"
+            @pointermove="moveTileDrag"
+            @pointerup="finishTileDrag"
+            @pointercancel="cancelTileDrag"
+            @lostpointercapture="cancelTileDrag"
+            @click="handleRackClick($event, tile)"
           >
             <span class="rack-letter">{{ tile.letter }}</span>
             <span class="rack-score">{{ tile.score }}</span>
-          </div>
+          </button>
         </div>
 
         <div class="mt-2 d-flex justify-center align-center gap-2">
@@ -196,6 +202,9 @@
         </div>
       </div>
     </div>
+
+    <div v-if="tileDrag && tileDrag.moved" class="drag-tile-preview" aria-hidden="true"
+      :style="{ left: tileDrag.x + 'px', top: tileDrag.y + 'px' }">{{ tileDrag.tile.letter }}</div>
 
     <!-- Game Over Celebration Modal -->
     <v-dialog v-model="showGameOverDialog" max-width="400" persistent>
@@ -243,10 +252,8 @@ export default {
     return {
       activePlayer: this.currentUser || "Timi",
       gameState: null,
-      firebaseUnsub: null,
-      broadcastChannel: null,
       selectedRackTile: null,
-      draggedTile: null,
+      tileDrag: null,
       dragHoverCell: null,
       pendingPlacements: [], // [{ row, col, tile }]
       showGameOverDialog: false,
@@ -283,11 +290,13 @@ export default {
     },
   },
   watch: {
+    gameState() { this.cancelTileDrag(); },
     currentUser(newVal) {
       if (newVal) this.activePlayer = newVal;
       this.pendingPlacements = [];
     },
     activePlayer() {
+      this.cancelTileDrag();
       this.pendingPlacements = [];
       // Clear pending selections when switching couch profile
       this.selectedRackTile = null;
@@ -296,20 +305,9 @@ export default {
       }
     },
   },
-  created() {
-
-  },
   mounted() {
     if (this.currentRack.length > 0) {
       this.selectedRackTile = this.currentRack[0];
-    }
-  },
-  beforeDestroy() {
-    if (typeof this.firebaseUnsub === "function") {
-      this.firebaseUnsub();
-    }
-    if (this.broadcastChannel) {
-      this.broadcastChannel.close();
     }
   },
   methods: {
@@ -333,6 +331,10 @@ export default {
       const mult = BOARD_MULTIPLIERS[r][c];
       if (mult === "ST") return "★";
       return mult || "";
+    },
+    cellLabel(r, c) {
+      const detail = this.getCellTile(r, c)?.letter || this.getMultiplierLabel(r, c);
+      return `Row ${r + 1}, column ${c + 1}${detail ? `, ${detail}` : ''}`;
     },
     getCellClass(r, c) {
       const mult = BOARD_MULTIPLIERS[r][c];
@@ -358,49 +360,49 @@ export default {
       return this.pendingPlacements.some((p) => p.row === r && p.col === c);
     },
 
-    // --- Drag and Drop Handlers ---
-    handleDragStart(e, tile) {
-      this.draggedTile = tile;
-      this.selectedRackTile = tile;
-      if (e.dataTransfer) {
-        e.dataTransfer.setData("text/plain", JSON.stringify(tile));
-        e.dataTransfer.effectAllowed = "move";
-      }
+    startTileDrag(event, tile) {
+      if (!this.isCurrentTurn || this.tileDrag || !event.isPrimary || event.button !== 0) return;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      this.tileDrag = {
+        id: event.pointerId, tile, moved: false,
+        startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY,
+      };
     },
-    handleDragEnd() {
+    tileDropTarget(x, y) {
+      const cell = document.elementFromPoint(x, y)?.closest('[data-scrabble-cell]');
+      if (!cell || !this.$el.contains(cell)) return null;
+      const [row, col] = cell.dataset.scrabbleCell.split('-').map(Number);
+      return this.getCellTile(row, col) ? null : { row, col };
+    },
+    moveTileDrag(event) {
+      const drag = this.tileDrag;
+      if (!drag || drag.id !== event.pointerId) return;
+      if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 7) return;
+      drag.moved = true;
+      drag.x = event.clientX;
+      drag.y = event.clientY;
+      const target = this.tileDropTarget(drag.x, drag.y);
+      this.dragHoverCell = target ? `${target.row}-${target.col}` : null;
+    },
+    finishTileDrag(event) {
+      const drag = this.tileDrag;
+      if (!drag || drag.id !== event.pointerId) return;
+      this.moveTileDrag(event);
+      this.cancelTileDrag(event);
+      if (!drag.moved) return;
+      const target = this.tileDropTarget(event.clientX, event.clientY);
+      if (target && this.placeTileAt(target.row, target.col, drag.tile)) this.selectedRackTile = null;
+    },
+    cancelTileDrag(event) {
+      if (event && this.tileDrag?.id !== event.pointerId) return;
+      this.tileDrag = null;
       this.dragHoverCell = null;
-      this.draggedTile = null;
     },
-    handleDragOver(e) {
-      e.preventDefault();
-      if (e.dataTransfer) {
-        e.dataTransfer.dropEffect = "move";
-      }
-    },
-    handleDragLeave(r, c) {
-      if (this.dragHoverCell === `${r}-${c}`) {
-        this.dragHoverCell = null;
-      }
-    },
-    handleDrop(e, r, c) {
-      e.preventDefault();
-      this.dragHoverCell = null;
-
-      let tile = this.draggedTile;
-      if (!tile && e.dataTransfer) {
-        try {
-          const raw = e.dataTransfer.getData("text/plain");
-          if (raw) tile = JSON.parse(raw);
-        } catch (err) {
-          // ignore
-        }
-      }
-      if (!tile) tile = this.selectedRackTile;
-      if (!tile) return;
-
-      this.placeTileAt(r, c, tile);
-      this.draggedTile = null;
-      this.selectedRackTile = null;
+    handleRackClick(event, tile) {
+      // Pointer capture sends the synthesized click back to the rack button.
+      // A real tap ends within the rack; a drop on the board must not reselect it.
+      if (event.detail && !event.currentTarget.contains(document.elementFromPoint(event.clientX, event.clientY))) return;
+      this.selectRackTile(tile);
     },
 
     // --- Tap-to-Place Handlers ---
@@ -412,6 +414,7 @@ export default {
       }
     },
     handleCellClick(r, c) {
+      if (!this.isCurrentTurn) return;
       // 1. If clicked on a pending tile on the board, recall it immediately back to rack
       const pendingIndex = this.pendingPlacements.findIndex(
         (p) => p.row === r && p.col === c
@@ -427,38 +430,18 @@ export default {
       }
 
       // 3. If a rack tile is selected, place it right here!
-      if (this.selectedRackTile) {
-        this.placeTileAt(r, c, this.selectedRackTile);
-        // Auto-select next available tile in rack for effortless rapid placement
-        const remaining = this.currentRack.filter((t) => t.id !== this.selectedRackTile.id);
-        this.selectedRackTile = remaining.length ? remaining[0] : null;
-        return;
-      }
-
-      // 4. If no rack tile selected, grab the first tile from rack and place it
-      if (this.currentRack.length > 0) {
-        this.placeTileAt(r, c, this.currentRack[0]);
-        const remaining = this.currentRack.filter((t) => t.id !== this.currentRack[0].id);
-        this.selectedRackTile = remaining.length ? remaining[0] : null;
-      }
+      const tile = this.selectedRackTile || this.currentRack[0];
+      if (this.placeTileAt(r, c, tile)) this.selectedRackTile = this.currentRack[0] || null;
     },
     placeTileAt(r, c, tile) {
-      if (!tile) return;
-      // Remove any existing pending placement on this cell
-      const existingIdx = this.pendingPlacements.findIndex((p) => p.row === r && p.col === c);
-      if (existingIdx !== -1) {
-        this.pendingPlacements.splice(existingIdx, 1);
-      }
-      // Remove tile if it was placed elsewhere
-      const tileIdx = this.pendingPlacements.findIndex((p) => p.tile.id === tile.id);
-      if (tileIdx !== -1) {
-        this.pendingPlacements.splice(tileIdx, 1);
-      }
+      if (!this.isCurrentTurn || !tile || !this.currentRack.some(item => item.id === tile.id) ||
+          this.gameState.board[r]?.[c] !== null || this.isTilePending(r, c)) return false;
       this.pendingPlacements.push({
         row: r,
         col: c,
         tile,
       });
+      return true;
     },
     recallPendingTiles() {
       this.pendingPlacements = [];
@@ -505,6 +488,11 @@ export default {
 </script>
 
 <style scoped>
+.scrabble-container, .game-controls, .scrabble-card, .board-wrapper, .rack-container {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .scrabble-card {
   background: radial-gradient(circle at center, rgba(30, 25, 45, 0.95) 0%, rgba(12, 14, 24, 0.98) 100%);
   border: 1px solid rgba(255, 213, 79, 0.35);
@@ -514,6 +502,7 @@ export default {
 .word-preview-badge {
   background: rgba(255, 213, 79, 0.15);
   border: 1px solid rgba(255, 213, 79, 0.4);
+  overflow-wrap: anywhere;
 }
 
 .player-couch-toggle {
@@ -523,18 +512,25 @@ export default {
 
 /* 9x9 Board Layout */
 .scrabble-grid {
-  display: inline-block;
+  display: grid;
+  gap: 3px;
+  width: min(100%, 404px);
+  min-width: 0;
   background: #181528;
-  padding: 8px;
+  padding: clamp(3px, 1vw, 8px);
   border-radius: 14px;
   border: 2px solid rgba(255, 213, 79, 0.45);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
 }
 
+.scrabble-row {
+  display: grid !important;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 3px;
+}
+
 .scrabble-cell {
-  width: 40px;
-  height: 40px;
-  margin: 1.5px;
+  aspect-ratio: 1;
   border-radius: 5px;
   background: #25283d;
   position: relative;
@@ -543,11 +539,11 @@ export default {
 }
 
 @media (max-width: 600px) {
-  .scrabble-cell {
-    width: 33px;
-    height: 33px;
-    margin: 1px;
-  }
+  .scrabble-grid, .scrabble-row { gap: 2px; }
+  .scrabble-card { display: flex; flex-direction: column; }
+  .rack-container { order: 1; margin-bottom: 12px; }
+  .action-bar { order: 2; }
+  .board-tile-score { right: 1px; bottom: 0; }
 }
 
 .scrabble-cell:hover {
@@ -628,20 +624,45 @@ export default {
 
 /* Player Rack (Wooden Shelf) */
 .rack-shelf {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 44px);
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
   background: linear-gradient(180deg, #78350f 0%, #451a03 100%);
   border: 2px solid #92400e;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
 }
 
 .rack-tile {
-  width: 44px;
-  height: 48px;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 11 / 12;
+  touch-action: none;
   background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
   border-radius: 6px;
   position: relative;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   user-select: none;
+}
+
+.drag-tile-preview {
+  position: fixed;
+  z-index: 20;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, calc(-100% - 12px));
+  border: 2px solid #00e5ff;
+  border-radius: 6px;
+  background: #fef3c7;
+  color: #1e1b2e;
+  font-size: 20px;
+  font-weight: 900;
+  pointer-events: none;
 }
 
 .rack-tile:hover {

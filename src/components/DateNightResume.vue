@@ -19,14 +19,14 @@ export default {
   data() {
     const room = 'date-night';
     const mode = localStorage.getItem(`last-game:${room}`) || 'whot';
-    const type = { crossword: 'crosswordGo', whot: 'whot', wordDuel: 'wordDuel', scrabble: 'scrabble' }[mode] || 'whot';
+    const type = { crossword: 'crosswordGo', whot: 'whot', wordDuel: 'wordDuel', scrabble: 'scrabble', chess: 'chess' }[mode] || 'whot';
     let media = null;
     try { media = nativeRoomMedia(JSON.parse(localStorage.getItem(`our-view-active-media-${room}`))); } catch (_) { /* No local title yet. */ }
     return { room, type, media, playback: null, savedGame: readGame(type, room), stops: [] };
   },
   computed: {
     game() { return this.savedGame?.status === 'game_over' ? null : this.savedGame; },
-    gameName() { return { whot: 'WHOT!', crosswordGo: 'Crossword Go', wordDuel: 'Word Duel', scrabble: 'Words with Friends' }[this.type]; },
+    gameName() { return { whot: 'WHOT!', crosswordGo: 'Crossword Go', wordDuel: 'Word Duel', scrabble: 'Words with Friends', chess: 'Chess' }[this.type]; },
     movieProgress() {
       const state = this.playback;
       if (!state || state.mediaKey !== mediaKey(this.media, 'native')) return 'Ready to watch';

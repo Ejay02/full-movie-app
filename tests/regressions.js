@@ -351,6 +351,55 @@ async function main() {
     assert.equal(state.moveHistory.length, 0);
     assert.equal(games.normalizeGame('wordDuel', {}).timiGuesses.length, 0);
   });
+  await test('Chess validates turn order and restores checkmate and repetition from saved moves', () => {
+    const chess = load('src/services/chessGameLogic.js', { 'chess.js': require('chess.js') });
+    let state = chess.newChessMatch();
+    assert.equal(chess.moveChess(state, 'Ejay', { from: 'e2', to: 'e4' }), null);
+    assert.equal(chess.moveChess(state, 'Timi', { from: 'e2', to: 'e5' }), null);
+    for (const san of ['f3', 'e5', 'g4', 'Qh4#']) state = chess.moveChess(state, state.currentTurn, san);
+    assert.equal(state.winner, 'Ejay');
+    assert.equal(state.status, 'game_over');
+    assert.equal(chess.moveChess(state, 'Timi', 'e4'), null);
+    games.cacheGame('chess', 'chess-test', state);
+    const saved = games.readGame('chess', 'chess-test');
+    assert.equal(chess.restoreChess(saved).isCheckmate(), true);
+    assert.equal(games.normalizeGame('chess', { white: 'Timi' }).moves.length, 0);
+
+    state = chess.newChessMatch('Ejay');
+    for (const san of ['Nf3', 'Nf6', 'Ng1', 'Ng8', 'Nf3', 'Nf6', 'Ng1', 'Ng8']) {
+      state = chess.moveChess(state, state.currentTurn, san);
+    }
+    assert.equal(state.status, 'game_over');
+    assert.equal(state.winner, null);
+    assert.equal(chess.restoreChess(state).isThreefoldRepetition(), true);
+  });
+  await test('Words touch dragging places one rack tile without replacing an occupied cell', () => {
+    const tile = { id: 'one', letter: 'A', score: 1 };
+    let target = { dataset: { scrabbleCell: '4-4' } };
+    const view = load('src/components/games/ScrabbleGame.vue', { '@/services/gameSession': () => ({}) }, {
+      document: { elementFromPoint: () => ({ closest: () => target }) },
+    }).default;
+    const state = { ...view.data.call({ currentUser: 'Timi' }), isCurrentTurn: true,
+      gameState: games.normalizeGame('scrabble', { board: { 0: { 0: { letter: 'B' } } } }),
+      currentRack: [tile], $el: { contains: () => true },
+    };
+    for (const [name, method] of Object.entries(view.methods)) state[name] = method.bind(state);
+    const down = { pointerId: 7, pointerType: 'touch', isPrimary: true, button: 0,
+      clientX: 25, clientY: 350, currentTarget: { setPointerCapture() {} } };
+    const up = { pointerId: 7, clientX: 25, clientY: 230 };
+    state.startTileDrag(down, tile);
+    state.moveTileDrag(up);
+    assert.equal(state.dragHoverCell, '4-4');
+    state.finishTileDrag(up);
+    assert.equal(state.pendingPlacements.length, 1);
+    assert.equal(state.pendingPlacements[0].tile.id, 'one');
+    assert.equal(state.dragHoverCell, null);
+    target = { dataset: { scrabbleCell: '0-0' } };
+    state.startTileDrag(down, tile);
+    state.finishTileDrag(up);
+    assert.equal(state.pendingPlacements.length, 1);
+    assert.equal(state.gameState.board[0][0].letter, 'B');
+  });
   await test('Game cache persists independently by room and game', () => {
     games.cacheGame('whot', 'room-a', whotState(2));
     assert.equal(games.readGame('whot', 'room-a').timiHand[0].number, 2);

@@ -809,6 +809,11 @@
           <v-icon left small>mdi-grid</v-icon>
           Words with Friends 🔠
         </v-btn>
+        <v-btn rounded depressed :color="activeGameMode === 'chess' ? '#B7D99A' : 'rgba(255, 255, 255, 0.08)'"
+          :class="activeGameMode === 'chess' ? 'black--text' : 'grey--text text--lighten-1'"
+          class="text-none font-weight-black px-6" @click="activeGameMode = 'chess'">
+          <v-icon left small>mdi-chess-knight</v-icon>Chess
+        </v-btn>
       </div>
 
       <!-- Active Game Component -->
@@ -829,6 +834,7 @@
           :current-user="currentUser"
           :room-id="roomId"
         ></scrabble-game>
+        <chess-game v-else-if="activeGameMode === 'chess'" :current-user="currentUser" :room-id="roomId" />
       </v-fade-transition>
     </div>
 
@@ -976,7 +982,7 @@ import ScrabbleGame from "@/components/games/ScrabbleGame.vue";
 function savedGameMode(room) {
   try {
     const mode = localStorage.getItem(`last-game:${room}`);
-    return ['whot', 'crossword', 'wordDuel', 'scrabble'].includes(mode) ? mode : 'whot';
+    return ['whot', 'crossword', 'wordDuel', 'scrabble', 'chess'].includes(mode) ? mode : 'whot';
   } catch (_) { return 'whot'; }
 }
 
@@ -988,6 +994,7 @@ export default {
     WordDuelGame,
     CrosswordGame,
     ScrabbleGame,
+    ChessGame: () => import('@/components/games/ChessGame.vue'),
   },
   data() {
     return {
@@ -2094,6 +2101,7 @@ export default {
 .watch-together-tab { scroll-margin-top: 80px; }
 .our-view-page { min-width: 0; max-width: 100%; }
 .our-view-tabs { max-width: 100%; }
+.game-night-tab { min-width: 0; max-width: 100%; }
 @media (max-width: 960px) {
   .our-view-tabs .tab-item { min-width: 0; padding: 0 12px; font-size: 12px; letter-spacing: 0; }
   .our-view-hero { padding: 16px !important; margin-bottom: 12px !important; }

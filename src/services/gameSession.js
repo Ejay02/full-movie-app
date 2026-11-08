@@ -6,7 +6,7 @@ export function normalizeGame(type, state) {
   const result = JSON.parse(JSON.stringify(state));
   const arrayKeys = type === "whot"
     ? ["market", "discard", "timiHand", "ejayHand", "history"]
-    : type === "wordDuel" ? ["timiGuesses", "ejayGuesses"] : type === "scrabble" ? ["timiRack", "ejayRack", "bag", "moveHistory"] : [];
+    : type === "wordDuel" ? ["timiGuesses", "ejayGuesses"] : type === "scrabble" ? ["timiRack", "ejayRack", "bag", "moveHistory"] : type === "chess" ? ["moves"] : [];
   arrayKeys.forEach((key) => { result[key] = Object.values(result[key] || {}); });
   if (type === "crossword") result.solved = result.solved || {};
   if (type === "crosswordGo") {
