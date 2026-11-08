@@ -10,7 +10,7 @@ let checks = 0;
 const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };
 const storage = new Map();
 const localStorage = { getItem: (key) => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) };
-function load(file, mocks = {}) {
+function load(file, mocks = {}, globals = {}) {
   const filename = path.join(root, file);
   let code = fs.readFileSync(filename, 'utf8');
   if (file.endsWith('.vue')) code = compiler.parseComponent(code).script.content;
@@ -19,6 +19,7 @@ function load(file, mocks = {}) {
   const module = { exports: {} };
   vm.runInNewContext(transformed, { module, exports: module.exports, console, Date, Math, URL,
     localStorage, process: { env: {} }, window: { addEventListener() {}, removeEventListener() {} },
+    ...globals,
     require: (name) => {
       if (name in mocks) return mocks[name];
       if (name.startsWith('@/')) return load('src/' + name.slice(2) + '.js', mocks);
@@ -194,6 +195,46 @@ async function main() {
     component.continueWatchingEntry = { currentTime: 125, season: 2, episode: 1 };
     view.methods.handleLoadedMetadata.call(component);
     assert.equal(player.currentTime, 0, 'a new episode must start at zero');
+  });
+  await test('Solo playback falls back in app after provider denial and preserves resume', async () => {
+    const view = load('src/views/WatchView.vue', { '@/data/personalMediaLibrary': { getPersonalMediaSource: () => null } }, {
+      AbortController, URLSearchParams, clearTimeout,
+      fetch: async () => ({ ok: false, json: async () => ({ code: 'provider_denied', message: 'Provider denied' }) }),
+    }).default;
+    const frame = {};
+    const writes = [];
+    const component = { ...view.data(), mediaType: 'movie', mediaId: '361743',
+      continueWatchingEntry: { currentTime: 125, duration: 500 }, $refs: { fallbackPlayer: { contentWindow: frame } },
+      $store: { dispatch: (_, data) => writes.push(data) },
+    };
+    for (const [name, method] of Object.entries(view.methods)) component[name] = method.bind(component);
+    Object.defineProperty(component, 'showNativePlayer', { get: () => view.computed.showNativePlayer.call(component) });
+    await component.preparePlayback();
+    const url = new URL(component.fallbackIframeUrl);
+    assert.equal(url.origin + url.pathname, 'https://vidlink.pro/movie/361743');
+    assert.equal(url.searchParams.get('player'), 'jw');
+    assert.equal(url.searchParams.get('startAt'), '125');
+    assert.equal(component.showNativePlayer, false);
+    assert.equal(component.sourceLoading, false);
+    assert.equal(component.streamError, '');
+    const send = (currentTime, origin = url.origin, source = frame) => component.handleFallbackPlayerMessage({
+      origin, source, data: { type: 'PLAYER_EVENT', data: { event: 'timeupdate', currentTime, duration: 500 } },
+    });
+    send(0);
+    send(400, 'https://example.org');
+    send(400, url.origin, {});
+    assert.equal(writes.length, 0);
+    send(126);
+    send(129);
+    assert.equal(writes.length, 1);
+    component.saveCurrentProgress();
+    assert.equal(writes[1].currentTime, 129);
+    assert.equal(writes[1].progressPercent, 26);
+    component.mediaType = 'tv'; component.selectedSeason = 2; component.selectedEpisode = 3;
+    component.continueWatchingEntry = { season: 2, episode: 2, currentTime: 125 };
+    component.openFallbackPlayer();
+    assert.equal(new URL(component.fallbackIframeUrl).pathname, '/tv/361743/2/3');
+    assert.equal(new URL(component.fallbackIframeUrl).searchParams.has('startAt'), false);
   });
   await test('Crossword grids have matching intersections and no unintended words', () => {
     for (const puzzle of crossword.CROSSWORDS) {

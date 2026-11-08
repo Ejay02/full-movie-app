@@ -90,8 +90,7 @@
         </div>
         <div v-else-if="streamError" class="stream-status" role="alert">
           <p>{{ streamError }}</p>
-          <v-btn v-if="providerDenied && providerUrl" color="cyan" class="black--text text-none" :href="providerUrl" target="_blank" rel="noopener noreferrer">Open provider</v-btn>
-          <v-btn v-else color="cyan" class="black--text text-none" @click="preparePlayback">Retry stream</v-btn>
+          <v-btn color="cyan" class="black--text text-none" @click="preparePlayback">Retry stream</v-btn>
         </div>
         <!-- Native video player -->
         <div v-if="showNativePlayer" class="native-theater-wrapper">
@@ -180,7 +179,18 @@
         <!-- Iframe streaming player -->
         <div v-else class="iframe-theater-wrapper">
           <iframe
-            v-if="activeIframeUrl"
+            v-if="fallbackIframeUrl"
+            ref="fallbackPlayer"
+            title="Cinema Player"
+            allowfullscreen
+            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+            referrerpolicy="origin"
+            :src="fallbackIframeUrl"
+            class="theater-iframe"
+          ></iframe>
+          <iframe
+            v-else-if="activeIframeUrl"
+            title="My Library player"
             allowfullscreen
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
             sandbox="allow-scripts allow-same-origin allow-presentation"
@@ -287,7 +297,7 @@
 
 <script>
 import { getPersonalMediaSource } from "@/data/personalMediaLibrary";
-import { providerWatchUrl } from "@/services/providerPlayback";
+import { providerRoomUrl } from "@/services/providerPlayback";
 
 function createInitialMedia() {
   return {
@@ -322,7 +332,9 @@ export default {
       resolvedSource: null,
       sourceLoading: false,
       streamError: "",
-      providerDenied: false,
+      fallbackIframeUrl: "",
+      fallbackStartAt: 0,
+      fallbackProgress: null,
       sourceRequest: null,
       hlsPlayer: null,
       quality: -1,
@@ -367,9 +379,6 @@ export default {
     activeSource() {
       return this.activeProviderId === "native" ? this.resolvedSource : this.mediaSource;
     },
-    providerUrl() {
-      return providerWatchUrl(this.mediaType, this.mediaId, this.selectedSeason, this.selectedEpisode);
-    },
     hasPersonalSource() {
       return !!this.mediaSource;
     },
@@ -388,7 +397,7 @@ export default {
       return p ? p.name : "";
     },
     showNativePlayer() {
-      return this.activeProviderId === "native" || (this.activeProviderId === "personal" &&
+      return (this.activeProviderId === "native" && !this.fallbackIframeUrl) || (this.activeProviderId === "personal" &&
              this.mediaSource &&
              this.mediaSource.sourceType === "video");
     },
@@ -456,6 +465,7 @@ export default {
   },
   async mounted() {
     window.addEventListener("pagehide", this.saveCurrentProgress);
+    window.addEventListener("message", this.handleFallbackPlayerMessage);
     document.addEventListener("visibilitychange", this.saveWhenHidden);
     await this.loadPlayDetails();
     this.resetControlsTimer();
@@ -466,6 +476,7 @@ export default {
     this.saveCurrentProgress();
     this.hasRestoredPosition = false;
     window.removeEventListener("pagehide", this.saveCurrentProgress);
+    window.removeEventListener("message", this.handleFallbackPlayerMessage);
     document.removeEventListener("visibilitychange", this.saveWhenHidden);
     this.disposePlayback();
     this.clearBufferingCheck();
@@ -482,6 +493,8 @@ export default {
     disposePlayback() {
       if (this.sourceRequest) { this.sourceRequest.abort(); this.sourceRequest = null; }
       if (this.hlsPlayer) { this.hlsPlayer.destroy(); this.hlsPlayer = null; }
+      this.fallbackIframeUrl = "";
+      this.fallbackProgress = null;
     },
     setQuality() { if (this.hlsPlayer) this.hlsPlayer.currentLevel = this.quality; },
     recoverStream() {
@@ -500,9 +513,7 @@ export default {
       this.hasRestoredPosition = false;
       this.disposePlayback();
       this.streamError = "";
-      this.providerDenied = false;
       this.sourceLoading = false;
-      this.hasRestoredPosition = false;
       this.lastTrackedSecond = -15;
       this.resolvedSource = null;
       if (this.activeProviderId === "native") {
@@ -516,7 +527,7 @@ export default {
           const source = await response.json();
           if (controller.signal.aborted) return;
           if (!response.ok) {
-            this.providerDenied = source.code === 'provider_denied';
+            if (source.code === 'provider_denied' && this.openFallbackPlayer()) return;
             throw new Error(source.message || 'This stream is unavailable.');
           }
           this.resolvedSource = source;
@@ -557,7 +568,50 @@ export default {
     handleNativeError() {
       if (!this.sourceLoading) this.recoverStream();
     },
+    openFallbackPlayer() {
+      const playerUrl = providerRoomUrl(this.mediaType, this.mediaId, this.selectedSeason, this.selectedEpisode);
+      if (!playerUrl) return false;
+      const saved = this.continueWatchingEntry;
+      const sameEpisode = this.mediaType !== 'tv' || (Number(saved?.season) === this.selectedSeason && Number(saved?.episode) === this.selectedEpisode);
+      const savedTime = sameEpisode ? Math.floor(Number(saved?.currentTime) || 0) : 0;
+      const duration = Number(saved?.duration);
+      this.fallbackStartAt = Math.max(0, duration > 0 ? Math.min(savedTime, Math.floor(duration - 5)) : savedTime);
+      const url = new URL(playerUrl);
+      url.searchParams.set('autoplay', 'true');
+      if (this.fallbackStartAt > 0) url.searchParams.set('startAt', this.fallbackStartAt);
+      this.fallbackIframeUrl = url.href;
+      return true;
+    },
+    handleFallbackPlayerMessage(event) {
+      if (!this.fallbackIframeUrl || event.origin !== new URL(this.fallbackIframeUrl).origin ||
+          event.source !== this.$refs.fallbackPlayer?.contentWindow) return;
+      let message = event.data;
+      if (typeof message === 'string') {
+        try { message = JSON.parse(message); } catch (_) { return; }
+      }
+      const data = message?.data;
+      if (message?.type !== 'PLAYER_EVENT' || !data ||
+          !['play', 'pause', 'seeked', 'timeupdate', 'ended'].includes(data.event)) return;
+      const { currentTime, duration } = data;
+      if (!Number.isFinite(currentTime) || !Number.isFinite(duration) || currentTime < 0 || duration <= 0 || currentTime > duration + 1) return;
+      // The embed can report the start of the file before it applies startAt.
+      if (!this.fallbackProgress && currentTime < Math.max(0, this.fallbackStartAt - 3)) return;
+      if (data.event === 'ended') {
+        this.fallbackProgress = null;
+        this.handlePlaybackEnded();
+        return;
+      }
+      this.fallbackProgress = { currentTime, duration };
+      const second = Math.floor(currentTime);
+      if (data.event === 'timeupdate' && Math.abs(second - this.lastTrackedSecond) < 15) return;
+      this.lastTrackedSecond = second;
+      this.recordContinueWatching({ ...this.fallbackProgress, force: true });
+    },
     saveCurrentProgress() {
+      if (this.fallbackProgress) {
+        this.recordContinueWatching({ ...this.fallbackProgress, force: true });
+        return;
+      }
       const player = this.$refs.player;
       if (!player || !player.readyState || !this.hasRestoredPosition) return;
       this.recordContinueWatching({ currentTime: player.currentTime, duration: player.duration, force: true });
@@ -629,6 +683,8 @@ export default {
       this.$router.push(backPath).catch(() => {});
     },
     playEpisode(episodeNum) {
+      this.saveCurrentProgress();
+      this.fallbackProgress = null;
       this.hasRestoredPosition = false;
       this.selectedEpisode = episodeNum;
       this.autoplayCancelled = false;
@@ -710,7 +766,7 @@ export default {
       }
     },
     recordContinueWatching({ currentTime = null, duration = null, force = false } = {}) {
-      const isPublicEmbed = !this.showNativePlayer;
+      const isPublicEmbed = !this.showNativePlayer && !this.fallbackIframeUrl;
       const saved = this.continueWatchingEntry;
       const sameEpisode = this.mediaType !== 'tv' || (Number(saved?.season) === this.selectedSeason && Number(saved?.episode) === this.selectedEpisode);
       currentTime = currentTime ?? (sameEpisode ? saved?.currentTime || 0 : 0);
