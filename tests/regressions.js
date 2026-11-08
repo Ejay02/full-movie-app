@@ -197,8 +197,10 @@ async function main() {
     assert.equal(player.currentTime, 0, 'a new episode must start at zero');
   });
   await test('Solo playback falls back in app after provider denial and preserves resume', async () => {
+    let touchLayout = true;
     const view = load('src/views/WatchView.vue', { '@/data/personalMediaLibrary': { getPersonalMediaSource: () => null } }, {
       AbortController, URLSearchParams, clearTimeout,
+      window: { matchMedia: () => ({ matches: touchLayout }) },
       fetch: async () => ({ ok: false, json: async () => ({ code: 'provider_denied', message: 'Provider denied' }) }),
     }).default;
     const frame = {};
@@ -213,6 +215,7 @@ async function main() {
     const url = new URL(component.fallbackIframeUrl);
     assert.equal(url.origin + url.pathname, 'https://vidlink.pro/movie/361743');
     assert.equal(url.searchParams.get('player'), 'jw');
+    assert.equal(url.searchParams.get('autoplay'), 'false');
     assert.equal(url.searchParams.get('startAt'), '125');
     assert.equal(component.showNativePlayer, false);
     assert.equal(component.sourceLoading, false);
@@ -239,9 +242,11 @@ async function main() {
     component.mediaId = '361743';
     component.mediaType = 'tv'; component.selectedSeason = 2; component.selectedEpisode = 3;
     component.continueWatchingEntry = { season: 2, episode: 2, currentTime: 125 };
+    touchLayout = false;
     component.openFallbackPlayer();
     assert.equal(new URL(component.fallbackIframeUrl).pathname, '/tv/361743/2/3');
     assert.equal(new URL(component.fallbackIframeUrl).searchParams.has('startAt'), false);
+    assert.equal(new URL(component.fallbackIframeUrl).searchParams.get('autoplay'), 'true');
   });
   await test('Crossword grids have matching intersections and no unintended words', () => {
     for (const puzzle of crossword.CROSSWORDS) {

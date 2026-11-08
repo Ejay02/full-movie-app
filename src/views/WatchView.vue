@@ -28,7 +28,7 @@
         ]"
       >
         <div class="d-flex align-center min-w-0">
-          <v-btn icon dark large class="back-btn mr-3" @click="goBack">
+          <v-btn icon dark large class="back-btn mr-3" aria-label="Back to title" @click="goBack">
             <v-icon>mdi-arrow-left</v-icon>
           </v-btn>
           <div class="min-w-0">
@@ -586,7 +586,9 @@ export default {
       const duration = Number(saved?.duration);
       this.fallbackStartAt = Math.max(0, duration > 0 ? Math.min(savedTime, Math.floor(duration - 5)) : savedTime);
       const url = new URL(playerUrl);
-      url.searchParams.set('autoplay', 'true');
+      // A tap inside the player lets mobile browsers start with sound.
+      const tapToPlay = window.matchMedia('(max-width: 600px), (pointer: coarse)').matches;
+      url.searchParams.set('autoplay', tapToPlay ? 'false' : 'true');
       if (this.fallbackStartAt > 0) url.searchParams.set('startAt', this.fallbackStartAt);
       this.fallbackIframeUrl = url.href;
       return true;
@@ -973,6 +975,7 @@ export default {
   background: #000000;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   position: fixed;
   inset: 0;
   z-index: 9999;
@@ -1178,6 +1181,23 @@ export default {
     left: 12px;
     bottom: 70px;
     width: auto;
+  }
+}
+
+@media (max-width: 600px), (pointer: coarse) {
+  .theater-control-bar {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .theater-control-bar.controls-hidden {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .theater-playback-area {
+    position: relative;
+    min-height: 0;
   }
 }
 
