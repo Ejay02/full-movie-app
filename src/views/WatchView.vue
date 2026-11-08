@@ -461,7 +461,17 @@ export default {
       this.startBufferingCheck();
       if (!this.loading) this.preparePlayback();
     },
-    '$route.params.id'() { this.loadPlayDetails(); },
+    $route(to, from) {
+      if (to.path !== from.path && to.name === 'watch') this.loadPlayDetails();
+    },
+  },
+  beforeRouteLeave(to, from, next) {
+    this.saveCurrentProgress();
+    next();
+  },
+  beforeRouteUpdate(to, from, next) {
+    if (to.path !== from.path) this.saveCurrentProgress();
+    next();
   },
   async mounted() {
     window.addEventListener("pagehide", this.saveCurrentProgress);
@@ -473,7 +483,6 @@ export default {
   },
   beforeDestroy() {
     clearTimeout(this.recoveryTimer);
-    this.saveCurrentProgress();
     this.hasRestoredPosition = false;
     window.removeEventListener("pagehide", this.saveCurrentProgress);
     window.removeEventListener("message", this.handleFallbackPlayerMessage);

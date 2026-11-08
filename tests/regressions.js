@@ -227,9 +227,16 @@ async function main() {
     send(126);
     send(129);
     assert.equal(writes.length, 1);
-    component.saveCurrentProgress();
+    let left = false;
+    view.beforeRouteLeave.call(component, { path: '/' }, { path: '/watch/movie/361743' }, () => {
+      component.mediaId = undefined;
+      left = true;
+    });
+    assert.equal(left, true);
     assert.equal(writes[1].currentTime, 129);
     assert.equal(writes[1].progressPercent, 26);
+    assert.equal(writes[1].mediaId, '361743');
+    component.mediaId = '361743';
     component.mediaType = 'tv'; component.selectedSeason = 2; component.selectedEpisode = 3;
     component.continueWatchingEntry = { season: 2, episode: 2, currentTime: 125 };
     component.openFallbackPlayer();

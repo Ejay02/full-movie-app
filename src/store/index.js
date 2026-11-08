@@ -42,6 +42,10 @@ function persistWatched(items) {
   window.localStorage.setItem(WATCHED_KEY, JSON.stringify(items));
 }
 
+function isWatchableItem(item) {
+  return (item?.mediaType === 'movie' || item?.mediaType === 'tv') && /^[1-9]\d{0,9}$/.test(String(item.mediaId));
+}
+
 function loadContinueWatching() {
   if (typeof window === "undefined") {
     return [];
@@ -54,7 +58,7 @@ function loadContinueWatching() {
     }
 
     const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.filter(isWatchableItem) : [];
   } catch (error) {
     console.warn("Unable to restore continue watching state.", error);
     return [];
@@ -290,6 +294,7 @@ const store = new Vuex.Store({
       try { localStorage.setItem(AVATAR_STORAGE_KEY, JSON.stringify(state.profileAvatars)); } catch (_) { /* Session choice still works when storage is unavailable. */ }
     },
     RECORD_CONTINUE_WATCHING(state, payload) {
+      if (!isWatchableItem(payload)) return;
       const item = normalizeWatchItem(payload);
       const existingIndex = state.continueWatching.findIndex(
         (entry) => entry.id === item.id,
